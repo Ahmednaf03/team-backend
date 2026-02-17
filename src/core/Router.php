@@ -22,10 +22,9 @@ class Router{
     protected array $routes = [];
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Register GET Route
-    |--------------------------------------------------------------------------
+    /* once load routes run this function will get
+     all routes and store them in $routes array with
+     with their handlers
     */
     public function get(string $uri, callable $handler): void{
         $this->routes['GET'][$uri] = $handler;
