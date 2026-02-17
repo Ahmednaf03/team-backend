@@ -12,6 +12,11 @@ require_once __DIR__ . '/../src/Core/Router.php';
 require_once __DIR__ . '/../src/Core/Request.php';
 require_once __DIR__ . '/../src/Core/Response.php';
 
+// Load middlewares in index becasue loadRoutes is executed here
+require_once __DIR__ . '/../src/Middlewares/AuthMiddleware.php';
+require_once __DIR__ . '/../src/Middlewares/TenantMiddleware.php';
+require_once __DIR__ . '/../src/Middlewares/RoleMiddleware.php';
+
 $request = new Request();
 $response = new Response();
 //  Create router instance
