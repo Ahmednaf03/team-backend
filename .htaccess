@@ -1,0 +1,9 @@
+RewriteEngine On
+
+RewriteBase /team-backend/
+
+# If request is NOT already inside public
+RewriteCond %{REQUEST_URI} !^/team-backend/public/
+
+# Redirect everything to public folder
+RewriteRule ^(.*)$ public/$1 [L]
