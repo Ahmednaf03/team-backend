@@ -16,4 +16,8 @@ class TenantMiddleware{
 
         $request->set('tenant_id', $user['tenant_id']);
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/main
