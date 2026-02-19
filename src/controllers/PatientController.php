@@ -11,4 +11,52 @@ class PatientController{
 
         Response::json($patients);
     }
+
+public static function getById($request, $response, $id) {
+
+    $tenantId = $request->get('tenant_id');
+
+    $patient = Patient::getById($id, $tenantId);
+
+    if (!$patient) {
+        Response::json(null, 404, 'Patient not found');
+    }
+
+    Response::json($patient, 200, 'Patient fetched successfully');
+}
+
+
+
+        public static function create($request, $response){
+        // this will be provided by tenant middleware
+        $tenantId = $request->get('tenant_id');
+        // request body is being captured here so no need for sending manually in the controller
+        $patients = Patient::create($tenantId, $request->Body());
+
+        if ($patients) {
+            Response::json($patients, 201, 'Patient created successfully');
+            exit;
+        }
+        Response::json($patients, 500, 'Patient creation failed');
+    }
+
+
+        public static function update($request, $response, $id){
+
+             $tenantId = $request->get('tenant_id');
+
+             $updated = Patient::update($tenantId, $id, $request->body());
+
+            Response::json($updated, 200, 'Patient updated successfully');
+}
+
+
+        public static function delete($request, $response, $id){
+        // this will be provided by tenant middleware
+        $tenantId = $request->get('tenant_id');
+        $userId = $request->get('user_id');
+        $patients = Patient::forceDelete($tenantId,$id, $request->Body());
+
+        Response::json($patients, 200, 'Patient deleted successfully');
+    }
 }

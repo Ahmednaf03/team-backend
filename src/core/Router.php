@@ -60,14 +60,14 @@ class Router{
     Load All Route Files
 
     */
-    public function loadRoutes(string $routesPath): void{
+    public function loadRoutes(string $routesPath, $pdo): void{
         // Get all PHP files inside Routes folder
         $files = glob($routesPath . '/*.php');
+        $router = $this;
 
         // Include each file
         foreach ($files as $file) {
             require $file;
-            $router = $this;
         }
     }
 
@@ -85,7 +85,7 @@ class Router{
     | 5. Returns 404 if not found
     |
     */
-    public function resolve($request, $response): void{
+    public function resolve($pdo,$request, $response): void{
         // Get current HTTP method (GET, POST, etc.)
         $method = $request->method();
 
@@ -99,7 +99,15 @@ class Router{
         $uri = rtrim($uri, '/') ?: '/';
 
         // Try to find matching handler
-        $handler = $this->routes[$method][$uri] ?? null;
+       $handler = null;
+
+foreach ($this->routes[$method] ?? [] as $route => $h) {
+    if ($uri === $route || str_starts_with($uri, $route . '/')) {
+        $handler = $h;
+        break;
+    }
+}
+
 
         // If route not found → return 404
         if (!$handler) {
@@ -113,6 +121,6 @@ class Router{
 
         // Execute the stored callback
         // This will run middleware + controller
-        call_user_func($handler,$request,$response);
+        call_user_func($handler,$request,$response,$pdo);
     }
 }
