@@ -55,7 +55,7 @@ public static function getById($request, $response, $id) {
         // this will be provided by tenant middleware
         $tenantId = $request->get('tenant_id');
         $userId = $request->get('user_id');
-        $patients = Patient::forceDelete($tenantId,$id, $request->Body());
+        $patients = Patient::forceDelete($tenantId,$id); //request body deleted here if i break add that
 
         Response::json($patients, 200, 'Patient deleted successfully');
     }

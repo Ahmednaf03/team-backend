@@ -45,6 +45,9 @@ class Router{
         $this->routes['PUT'][$uri] = $handler;
     }
 
+      public function patch(string $uri, callable $handler): void{
+        $this->routes['PATCH'][$uri] = $handler;
+    }
 
     /*
     |--------------------------------------------------------------------------
