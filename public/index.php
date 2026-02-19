@@ -9,6 +9,7 @@ spl_autoload_register(function ($class) {
         __DIR__ . '/../src/models/',
         __DIR__ . '/../src/controllers/',
         __DIR__ . '/../src/Middlewares/',
+        __DIR__ . '/../src/helpers/',
     ];
 
     foreach ($paths as $path) {
@@ -40,6 +41,8 @@ $pdo = Database::connect();
 
 $request = new Request();
 $response = new Response();
+
+JsonMiddleware::handle($request, $response);
 //  Create router instance
 $router = new Router();
 
