@@ -5,11 +5,7 @@
 */
 $router->get('/api/appointments/upcoming', function ($request, $response) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'provider'
-    ]);
+   
 
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin']);
@@ -18,12 +14,8 @@ $router->get('/api/appointments/upcoming', function ($request, $response) {
 });
 $router->get('/api/appointments', function ($request, $response) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'provider'
-    ]);
-
+   AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin']);
 
@@ -42,11 +34,14 @@ $router->get('/api/appointments', function ($request, $response) {
 
 $router->post('/api/appointments', function ($request, $response) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 2,
-        'role'      => 'provider'
-    ]);
+    // $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 2,
+    //     'role'      => 'provider'
+    // ]);
+
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin']);
@@ -57,11 +52,13 @@ $router->post('/api/appointments', function ($request, $response) {
 
 $router->put('/api/appointments', function ($request, $response) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'provider'
-    ]);
+    // $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 1,
+    //     'role'      => 'provider'
+    // ]);
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['provider', 'admin']);
@@ -82,11 +79,13 @@ $router->put('/api/appointments', function ($request, $response) {
 
 $router->patch('/api/appointments', function ($request, $response) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'provider'
-    ]);
+    // $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 1,
+    //     'role'      => 'provider'
+    // ]);
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['provider', 'admin']);
@@ -107,11 +106,13 @@ $router->patch('/api/appointments', function ($request, $response) {
 
 $router->delete('/api/appointments', function ($request, $response) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'admin'
-    ]);
+    // $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 1,
+    //     'role'      => 'admin'
+    // ]);
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['admin']);

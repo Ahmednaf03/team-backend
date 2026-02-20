@@ -3,11 +3,14 @@
 
 $router->get('/api/messages', function ($request, $response) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'provider'
-    ]);
+    // $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 1,
+    //     'role'      => 'provider'
+    // ]);
+
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin']);
@@ -43,13 +46,14 @@ $router->get('/api/messages', function ($request, $response) {
 
 $router->post('/api/messages', function ($request, $response) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'provider'
-    ]);
+    // $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 1,
+    //     'role'      => 'provider'
+    // ]);
 
-    
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin']);
@@ -70,11 +74,14 @@ $router->post('/api/messages', function ($request, $response) {
 
 $router->put('/api/messages', function ($request, $response) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'provider'
-    ]);
+    // $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 1,
+    //     'role'      => 'provider'
+    // ]);
+
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['provider', 'admin']);
@@ -95,11 +102,14 @@ $router->put('/api/messages', function ($request, $response) {
 
 $router->delete('/api/messages', function ($request, $response) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'provider'
-    ]);
+    // $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 1,
+    //     'role'      => 'provider'
+    // ]);
+
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['provider', 'admin']);

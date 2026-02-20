@@ -6,11 +6,14 @@ $router->get('/api/patients', function ($request, $response) use ($pdo) {
 
     //un comment me once auth and tenant middleware are implemented
     // AuthMiddleware::handle($request);
-       $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'provider'
-    ]);
+    //    $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 1,
+    //     'role'      => 'provider'
+    // ]);
+
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
     TenantMiddleware::handle($request,$response);
     RoleMiddleware::handle($request,$response, ['admin', 'provider']);
        // If URL is /api/patients/1
@@ -46,11 +49,15 @@ $router->get('/api/patients', function ($request, $response) use ($pdo) {
 
 $router->post('/api/patients', function ($request, $response) use ($pdo) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'admin'
-    ]);
+    // $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 1,
+    //     'role'      => 'admin'
+    // ]);
+
+
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['admin']);
@@ -61,11 +68,14 @@ $router->post('/api/patients', function ($request, $response) use ($pdo) {
 
 $router->put('/api/patients', function ($request, $response) use ($pdo) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'admin'
-    ]);
+    // $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 1,
+    //     'role'      => 'admin'
+    // ]);
+
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['admin']);
@@ -87,17 +97,20 @@ $router->put('/api/patients', function ($request, $response) use ($pdo) {
 
 $router->delete('/api/patients', function ($request, $response) use ($pdo) {
 
-    $request->set('user', [
-        'user_id'   => 2,
-        'tenant_id' => 1,
-        'role'      => 'admin'
-    ]);
+    // $request->set('user', [
+    //     'user_id'   => 2,
+    //     'tenant_id' => 1,
+    //     'role'      => 'admin'
+    // ]);
+
+
      $uri = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));
 
     // segments: ['api','patients','1']
     $id = $segments[2] ?? null;
-
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['admin']);
 
