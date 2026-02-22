@@ -98,6 +98,16 @@ class Appointment {
         return $stmt->execute($values);
     }
 
+    public static function updateNotes($tenantId, $id, $notes) {
+
+        $stmt = self::db()->prepare("
+            UPDATE appointments
+            SET notes = ?
+            WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL
+        ");
+
+        return $stmt->execute([$notes, $id, $tenantId]);
+    }
     public static function cancel($tenantId, $id) {
 
         $stmt = self::db()->prepare("

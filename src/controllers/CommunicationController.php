@@ -55,6 +55,13 @@ class CommunicationController {
             $data
         );
 
+        $updatedNotes = Appointment::updateNotes($tenantId, $appointmentId, $data['message']);
+
+        if (!$updatedNotes) {
+            Response::json(null, 500, 'Message updation in appointment failed');
+            return;
+        }
+
         if ($created) {
             Response::json($created, 201, 'Message created successfully');
             return;

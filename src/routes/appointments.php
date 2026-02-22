@@ -5,8 +5,7 @@
 */
 $router->get('/api/appointments/upcoming', function ($request, $response) {
 
-   
-
+    AuthMiddleware::handle($request, $response);
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin']);
 

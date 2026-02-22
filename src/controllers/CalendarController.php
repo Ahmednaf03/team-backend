@@ -45,7 +45,8 @@ class CalendarController {
             Response::json(null, 403, 'Not allowed or not found');
             return;
         }
-
+        $appointment['patient_name'] = Encryption::decrypt($appointment['patient_name']);
+        $appointment['doctor_name']  = Encryption::decrypt($appointment['doctor_name']);
         Response::json($appointment, 200, 'Tooltip fetched');
     }
 }

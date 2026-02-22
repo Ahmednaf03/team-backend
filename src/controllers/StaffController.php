@@ -7,8 +7,13 @@ class StaffController {
         $tenantId = $request->get('tenant_id');
 
         $staff = Staff::getAll($tenantId);
+        $decryptedStaff = array_map(function ($staff) {
+            $staff['name'] = Encryption::decrypt($staff['name']);
+            $staff['email'] = Encryption::decrypt($staff['email']);
+            return $staff;
+        }, $staff);
 
-        Response::json($staff, 200, 'Staff fetched successfully');
+        Response::json($decryptedStaff, 200, 'Staff fetched successfully');
     }
 
     public static function getById($request, $response, $id) {
@@ -16,11 +21,13 @@ class StaffController {
         $tenantId = $request->get('tenant_id');
 
         $staff = Staff::getById($tenantId, $id);
-
         if (!$staff) {
             Response::json(null, 404, 'Staff not found');
             return;
         }
+
+        $staff['name'] = Encryption::decrypt($staff['name']);
+        $staff['email'] = Encryption::decrypt($staff['email']);
 
         Response::json($staff, 200, 'Staff fetched successfully');
     }
