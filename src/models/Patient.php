@@ -120,7 +120,9 @@ public static function update($tenantId, $id, $data) {
 
     $stmt = self::db()->prepare($sql);
 
-    return $stmt->execute($values);
+     $stmt->execute($values);
+
+    return $stmt->rowCount();
 }
 
 
@@ -136,7 +138,17 @@ public static function update($tenantId, $id, $data) {
     return $stmt->execute([$id, $tenantId]);
 }
 
-}
+    public static function softDelete($tenantId, $id) {
+
+        $stmt = self::db()->prepare("
+            UPDATE patients
+            SET deleted_at = NOW()
+            WHERE id = ?
+            AND tenant_id = ?
+        ");
+
+        return $stmt->execute([$id, $tenantId]);
+    }
 
 
  

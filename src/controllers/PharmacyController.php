@@ -52,6 +52,11 @@ class PharmacyController
             return;
         }
 
+        if ($prescription['status'] === 'DISPENSED') {
+            Response::json(null, 422, 'Prescription already dispensed');
+            return;
+        }
+
         $items = PrescriptionItems::getByPrescription($tenantId, $id);
 
         foreach ($items as $item) {

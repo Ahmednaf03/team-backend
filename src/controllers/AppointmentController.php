@@ -7,6 +7,10 @@ class AppointmentController {
         $tenantId = $request->get('tenant_id');
 
         $appointments = Appointment::getAll($tenantId);
+            if (!$appointments) {
+            Response::json(null, 404, 'Appointment not found');
+            return;
+        }
 
         Response::json($appointments, 200, 'Appointments fetched successfully');
     }

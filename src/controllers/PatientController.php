@@ -47,6 +47,10 @@ public static function getById($request, $response, $id) {
 
              $updated = Patient::update($tenantId, $id, $request->body());
 
+            if (!$updated) {
+                Response::json(null, 400, 'Update failed or conflict');
+                return;
+            }
             Response::json($updated, 200, 'Patient updated successfully');
 }
 
@@ -55,7 +59,7 @@ public static function getById($request, $response, $id) {
         // this will be provided by tenant middleware
         $tenantId = $request->get('tenant_id');
         $userId = $request->get('user_id');
-        $patients = Patient::forceDelete($tenantId,$id); //request body deleted here if i break add that
+        $patients = Patient::softDelete($tenantId,$id); //request body deleted here if i break add that
 
         Response::json($patients, 200, 'Patient deleted successfully');
     }

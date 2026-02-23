@@ -82,7 +82,7 @@ public static function signup($request, $response)
         );
 
         setcookie("refresh_token", $refreshToken, [
-            'expires'  => time() + (60*60*24*7),
+            'expires'  => time() + $_ENV['REFRESH_EXPIRY'],
             'path'     => '/',
             'httponly' => true,
             'secure'   => false,
@@ -133,7 +133,7 @@ public static function signup($request, $response)
         );
 
         setcookie("refresh_token", $newRefresh, [
-            'expires'  => time() + (60*60*24*7),
+            'expires'  => time() + $_ENV['REFRESH_EXPIRY'],
             'path'     => '/',
             'httponly' => true,
             'secure'   => false,

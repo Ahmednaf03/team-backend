@@ -45,7 +45,7 @@ class DashboardController
     {
         $user = $request->get('user');
 
-        if ($user['role'] !== 'super_admin') {
+        if ($user['role'] !== 'admin') {
             Response::json(null, 403, 'Forbidden');
             return;
         }

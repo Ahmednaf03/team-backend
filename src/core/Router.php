@@ -9,9 +9,10 @@ class Router{
     | This array stores all registered routes.
     | Structure looks like:
     |
-    | [
+    | $routes =[
     |   'GET' => [
     |       '/api/patients' => callable,
+    |       '/api/appintments/upcoming' => callable
     |   ],
     |   'POST' => [
     |       '/api/login' => callable,
@@ -104,7 +105,7 @@ class Router{
         // Try to find matching handler
        $handler = null;
 
-foreach ($this->routes[$method] ?? [] as $route => $h) {
+    foreach ($this->routes[$method] ?? [] as $route => $h) {
     if ($uri === $route || str_starts_with($uri, $route . '/')) {
         $handler = $h;
         break;
