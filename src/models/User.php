@@ -4,44 +4,39 @@ require_once __DIR__ . '/../helpers/Encryption.php';
 
 class User
 {
-    private static $db;
-
-    private static function db()
+ private static function db($tenantId)
     {
-        if (!self::$db) {
-            self::$db = Database::connect();
-        }
-        return self::$db;
+    return DatabaseManager::tenant($tenantId);
     }
 
 
-    public static function create($data)
-    {
-        $stmt = self::db()->prepare("
-            INSERT INTO users
-            (tenant_id, name, email, email_hash, password_hash, role, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'active')
-        ");
+    public static function create($tenantId, $data)
+{
+    $db = self::db($tenantId);   // get once
 
-        $stmt->execute([
-            $data['tenant_id'],
-            Encryption::encrypt($data['name']),
-            Encryption::encrypt($data['email']),
-            Encryption::blindIndex($data['email']),
-            password_hash($data['password'], PASSWORD_BCRYPT),
-            $data['role']
-        ]);
+    $stmt = $db->prepare("
+        INSERT INTO users
+        (name, email, email_hash, password_hash, role, status)
+        VALUES (?, ?, ?, ?, ?, 'active')
+    ");
 
-        return self::db()->lastInsertId();
-    }
+    $stmt->execute([
+        Encryption::encrypt($data['name']),
+        Encryption::encrypt($data['email']),
+        Encryption::blindIndex($data['email']),
+        password_hash($data['password'], PASSWORD_BCRYPT),
+        $data['role']
+    ]);
+
+    return $db->lastInsertId();  // same connection
+}
 
 
     public static function findByEmail($email, $tenantId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT *
             FROM users
-            WHERE tenant_id = ?
             AND email_hash = ?
             AND status = 'active'
             AND deleted_at IS NULL
@@ -49,7 +44,6 @@ class User
         ");
 
         $stmt->execute([
-            $tenantId,
             Encryption::blindIndex($email)
         ]);
 
@@ -59,15 +53,14 @@ class User
 
     public static function getById($id, $tenantId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT id, name, email, role, status, created_at
             FROM users
             WHERE id = ?
-            AND tenant_id = ?
             AND deleted_at IS NULL
         ");
 
-        $stmt->execute([$id, $tenantId]);
+        $stmt->execute([$id]);
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -82,11 +75,10 @@ class User
 
     public static function softDelete($id, $tenantId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE users
             SET deleted_at = NOW()
             WHERE id = ?
-            AND tenant_id = ?
         ");
 
         return $stmt->execute([$id, $tenantId]);

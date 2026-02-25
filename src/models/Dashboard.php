@@ -2,62 +2,56 @@
 
 class Dashboard
 {
-    private static $db;
-
-    private static function db()
+      private static function db($tenantId)
     {
-        if (!self::$db) {
-            self::$db = Database::connect();
-        }
-        return self::$db;
+        
+        return DatabaseManager::tenant($tenantId);
     }
+
 
     public static function patientsCount($tenantId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT COUNT(*) as total
             FROM patients
-            WHERE tenant_id = ?
-            AND deleted_at IS NULL
+            WHERE deleted_at IS NULL
         ");
 
-        $stmt->execute([$tenantId]);
+        $stmt->execute();
         return (int) $stmt->fetchColumn();
     }
 
     public static function appointmentStats($tenantId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT
                 COUNT(*) as total,
                 SUM(status='completed') as completed,
                 SUM(status='scheduled') as scheduled,
                 SUM(status='cancelled') as cancelled
             FROM appointments
-            WHERE tenant_id = ?
-            AND deleted_at IS NULL
+            WHERE deleted_at IS NULL
         ");
 
-        $stmt->execute([$tenantId]);
+        $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     public static function prescriptionSummary($tenantId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT COUNT(*) as total
             FROM prescriptions
-            WHERE tenant_id = ?
-            AND deleted_at IS NULL
+            WHERE deleted_at IS NULL
         ");
 
-        $stmt->execute([$tenantId]);
+        $stmt->execute();
         return (int) $stmt->fetchColumn();
     }
 
-    public static function tenantAnalytics()
+    public static function tenantAnalytics($tenantId)
     {
-        $stmt = self::db()->query("
+        $stmt = self::db($tenantId)->query("
             SELECT
                 t.id,
                 t.name,

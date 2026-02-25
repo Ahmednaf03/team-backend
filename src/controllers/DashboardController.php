@@ -41,17 +41,18 @@ class DashboardController
     }
 
 
-    public static function tenantAnalytics($request, $response)
-    {
-        $user = $request->get('user');
+    // public static function tenantAnalytics($request, $response)
+    // {
+    //     $user = $request->get('user');
+    //     $tenantId = $request->get('tenant_id');
 
-        if ($user['role'] !== 'admin') {
-            Response::json(null, 403, 'Forbidden');
-            return;
-        }
+    //     if ($user['role'] !== 'admin') {
+    //         Response::json(null, 403, 'Forbidden');
+    //         return;
+    //     }
 
-        $data = Dashboard::tenantAnalytics();
+    //     $data = Dashboard::tenantAnalytics($tenantId);
 
-        Response::json($data, 200, 'Tenant analytics fetched');
-    }
+    //     Response::json($data, 200, 'Tenant analytics fetched');
+    // }
 }

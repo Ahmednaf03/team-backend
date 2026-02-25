@@ -2,15 +2,12 @@
 
 class PrescriptionItems
 {
-    private static $db;
-
-    private static function db()
+   private static function db($tenantId)
     {
-        if (!self::$db) {
-            self::$db = Database::connect();
-        }
-        return self::$db;
+        
+        return DatabaseManager::tenant($tenantId);
     }
+
 
 
     public static function add($tenantId, $data)
@@ -31,19 +28,17 @@ class PrescriptionItems
         }
 
         // Check existing item
-        $check = self::db()->prepare("
+        $check = self::db($tenantId)->prepare("
             SELECT id, quantity
             FROM prescription_items
             WHERE prescription_id = ?
             AND medicine_id = ?
-            AND tenant_id = ?
             AND deleted_at IS NULL
         ");
 
         $check->execute([
             $data['prescription_id'],
-            $data['medicine_id'],
-            $tenantId
+            $data['medicine_id']
         ]);
 
         $existing = $check->fetch(PDO::FETCH_ASSOC);
@@ -53,25 +48,22 @@ class PrescriptionItems
                 UPDATE prescription_items
                 SET quantity = quantity + ?
                 WHERE id = ?
-                AND tenant_id = ?
             ");
 
             return $update->execute([
                 $data['quantity'],
-                $existing['id'],
-                $tenantId
+                $existing['id']
             ]);
         }
 
         $stmt = self::db()->prepare("
             INSERT INTO prescription_items
-            (tenant_id, prescription_id, medicine_id,
+            ( prescription_id, medicine_id,
              dosage, frequency, duration_days, quantity, instructions)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES ( ?, ?, ?, ?, ?, ?, ?)
         ");
 
         return $stmt->execute([
-            $tenantId,
             $data['prescription_id'],
             $data['medicine_id'],
             Encryption::encrypt($data['dosage']),
@@ -85,22 +77,18 @@ class PrescriptionItems
 
     public static function getByPrescription($tenantId, $prescriptionId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT pi.*, m.name AS medicine
             FROM prescription_items pi
             JOIN medicines m
                 ON m.id = pi.medicine_id
-                AND m.tenant_id = ?
                 AND m.deleted_at IS NULL
             WHERE pi.prescription_id = ?
-            AND pi.tenant_id = ?
             AND pi.deleted_at IS NULL
         ");
 
         $stmt->execute([
-            $tenantId,
-            $prescriptionId,
-            $tenantId
+            $prescriptionId
         ]);
 
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -116,15 +104,14 @@ class PrescriptionItems
 
     public static function validateMedicine($tenantId, $medicineId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT id
             FROM medicines
             WHERE id = ?
-            AND tenant_id = ?
             AND deleted_at IS NULL
         ");
 
-        $stmt->execute([$medicineId, $tenantId]);
+        $stmt->execute([$medicineId]);
 
         return (bool) $stmt->fetch();
     }
@@ -132,13 +119,12 @@ class PrescriptionItems
 
     public static function softDelete($tenantId, $id)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE prescription_items
             SET deleted_at = NOW()
             WHERE id = ?
-            AND tenant_id = ?
         ");
 
-        return $stmt->execute([$id, $tenantId]);
+        return $stmt->execute([$id]);
     }
 }

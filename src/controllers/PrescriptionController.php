@@ -91,4 +91,17 @@ class PrescriptionController
             'Prescription fetched successfully'
         );
     }
+
+    public static function getAll($request, $response)
+    {
+        $tenantId = $request->get('tenant_id');
+
+        $prescriptions = Prescription::getAll($tenantId);
+
+        Response::json(
+            $prescriptions,
+            200,
+            'Prescriptions fetched successfully'
+        );
+    }
 }

@@ -1,29 +1,26 @@
 <?php
 require_once __DIR__ . '/../helpers/Encryption.php';
     class Patient  {
-     private static $db;
-
-    private static function db() {
-        if (!self::$db) {
-            self::$db = Database::connect();
-        }
-        return self::$db;
+   private static function db($tenantId)
+    {
+        
+        return DatabaseManager::tenant($tenantId);
     }
+
      
  
     //  $db = Database::connect();
 
     public static function getAll($tenantId) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT id, name, age, gender, phone, address, diagnosis
             FROM patients
-            WHERE tenant_id = ?
-            AND status = 'active'
+            WHERE status = 'active'
             AND deleted_at IS NULL
         ");
 
-        $stmt->execute([$tenantId]);
+        $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($data as &$row) {
@@ -42,14 +39,13 @@ require_once __DIR__ . '/../helpers/Encryption.php';
 
         // $db = Database::connect();
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             INSERT INTO patients
-            (tenant_id, name, age, gender, phone, address, diagnosis)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (name, age, gender, phone, address, diagnosis)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
 
-        return $stmt->execute([
-            $tenantId,
+         $stmt->execute([
             Encryption::encrypt($data['name']),
             Encryption::encrypt((string)$data['age']),
             Encryption::encrypt($data['gender']),
@@ -57,20 +53,21 @@ require_once __DIR__ . '/../helpers/Encryption.php';
             Encryption::encrypt($data['address']),
             Encryption::encrypt($data['diagnosis'] ?? '')
         ]);
+
+        return self::db($tenantId)->lastInsertId();
     }
 
 public static function getById($id, $tenantId) {
 
-    $stmt = self::db()->prepare("
+    $stmt = self::db($tenantId)->prepare("
         SELECT id, name, age, gender, phone, address, diagnosis
         FROM patients
         WHERE id = ?
-        AND tenant_id = ?
         AND status = 'active'
         AND deleted_at IS NULL
     ");
 
-    $stmt->execute([$id, $tenantId]);
+    $stmt->execute([$id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$row) return null;
@@ -113,12 +110,12 @@ public static function update($tenantId, $id, $data) {
     // $fields[] = "updated_at = NOW()";
 
     $sql = "UPDATE patients SET " . implode(', ', $fields) . "
-            WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL";
+            WHERE id = ? AND deleted_at IS NULL";
 
     $values[] = $id;
-    $values[] = $tenantId;
+    // $values[] = $tenantId;
 
-    $stmt = self::db()->prepare($sql);
+    $stmt = self::db($tenantId)->prepare($sql);
 
      $stmt->execute($values);
 
@@ -131,24 +128,22 @@ public static function update($tenantId, $id, $data) {
     // $db = Database::connect();
 
     $sql = "DELETE FROM patients
-            WHERE id = ? AND tenant_id = ?";
+            WHERE id = ? ";
 
-    $stmt = self::db()->prepare($sql);
+    $stmt = self::db($tenantId)->prepare($sql);
 
-    return $stmt->execute([$id, $tenantId]);
+    return $stmt->execute([$id]);
 }
 
     public static function softDelete($tenantId, $id) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE patients
             SET deleted_at = NOW()
             WHERE id = ?
-            AND tenant_id = ?
         ");
 
-        return $stmt->execute([$id, $tenantId]);
+        return $stmt->execute([$id]);
     }
-
-
+    }
  

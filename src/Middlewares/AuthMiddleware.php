@@ -31,7 +31,8 @@ class AuthMiddleware
         $request->set('user', [
             'user_id'   => $payload['user_id'],
             'tenant_id' => $payload['tenant_id'],
-            'role'      => $payload['role']
+            'role'      => $payload['role'],
+            'is_super_admin' => $payload['is_super_admin']
         ]);
 
         return $payload;

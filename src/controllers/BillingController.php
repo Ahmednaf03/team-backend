@@ -18,7 +18,7 @@ class BillingController {
             return;
         }
 
-        if (!InvoiceItem::hasItems($id)) {
+        if (!InvoiceItem::hasItems($id, $tenantId)) {
             Response::json(null, 422, 'No prescription items found');
             return;
         }
@@ -30,7 +30,7 @@ class BillingController {
             return;
         }
 
-        $total = InvoiceItem::createFromPrescription($invoiceId, $id);
+        $total = InvoiceItem::createFromPrescription($invoiceId, $id, $tenantId);
 
         Invoice::updateTotal($invoiceId, $tenantId, $total);
 

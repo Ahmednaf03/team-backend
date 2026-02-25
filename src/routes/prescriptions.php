@@ -30,7 +30,7 @@ $router->get('/api/prescriptions', function ($request, $response) {
     if ($id) {
         PrescriptionController::getById($request, $response, $id);
     } else {
-        PrescriptionController::get($request, $response);
+        PrescriptionController::getAll($request, $response);
     }
 });
 
@@ -84,7 +84,7 @@ $router->patch('/api/prescriptions/verify', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['pharmacist', 'admin']);
+    RoleMiddleware::handle($request, $response, ['pharmacist']);
 
     $uri = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));
@@ -112,7 +112,7 @@ $router->patch('/api/prescriptions/dispense', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['pharmacist', 'admin']);
+    RoleMiddleware::handle($request, $response, ['pharmacist']);
 
     $uri = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));

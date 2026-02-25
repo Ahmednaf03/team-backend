@@ -2,27 +2,23 @@
 
 class Medicine
 {
-    private static $db;
-
-    private static function db()
+   private static function db($tenantId)
     {
-        if (!self::$db) {
-            self::$db = Database::connect();
-        }
-        return self::$db;
+        
+        return DatabaseManager::tenant($tenantId);
     }
+
 
 
     public static function getAll($tenantId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT id, name, stock_quantity, price
             FROM medicines
-            WHERE tenant_id = ?
-            AND deleted_at IS NULL
+            WHERE deleted_at IS NULL
         ");
 
-        $stmt->execute([$tenantId]);
+        $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -30,15 +26,14 @@ class Medicine
 
     public static function getById($id, $tenantId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT id, name, stock_quantity, price
             FROM medicines
             WHERE id = ?
-            AND tenant_id = ?
             AND deleted_at IS NULL
         ");
 
-        $stmt->execute([$id, $tenantId]);
+        $stmt->execute([$id]);
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -51,33 +46,30 @@ class Medicine
             return false;
         }
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE medicines
             SET stock_quantity = stock_quantity - ?
             WHERE id = ?
-            AND tenant_id = ?
             AND deleted_at IS NULL
         ");
 
         return $stmt->execute([
             $qty,
             $medicineId,
-            $tenantId
         ]);
     }
 
 
     public static function checkStock($tenantId, $medicineId, $qty)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT stock_quantity
             FROM medicines
             WHERE id = ?
-            AND tenant_id = ?
             AND deleted_at IS NULL
         ");
 
-        $stmt->execute([$medicineId, $tenantId]);
+        $stmt->execute([$medicineId]);
 
         $stock = $stmt->fetchColumn();
 
@@ -91,13 +83,12 @@ class Medicine
 
     public static function softDelete($tenantId, $id)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE medicines
             SET deleted_at = NOW()
             WHERE id = ?
-            AND tenant_id = ?
         ");
 
-        return $stmt->execute([$id, $tenantId]);
+        return $stmt->execute([$id]);
     }
 }

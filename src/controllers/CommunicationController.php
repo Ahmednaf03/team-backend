@@ -7,7 +7,8 @@ class CommunicationController {
 
         $user = $request->get('user');
 
-        $tenantId = $user['tenant_id'] ?? null;
+        // $tenantId = $user['tenant_id'] ?? null;
+        $tenantId = $request->get('tenant_id');
         $userId   = $user['user_id'] ?? null;
 
         $messages = Communication::get($tenantId, $appointmentId);
@@ -19,6 +20,13 @@ class CommunicationController {
     public static function getById($request, $response, $id) {
 
         $tenantId = $request->get('tenant_id');
+
+        $appointment = Appointment::getById($id, $tenantId);
+
+        if (!$appointment) {
+            Response::json(null, 404, 'Appointment not found');
+            return;
+        }
 
         $message = Communication::getById($id, $tenantId);
 
@@ -36,8 +44,8 @@ class CommunicationController {
     // die;
 
         $user = $request->get('user');
-
-        $tenantId = $user['tenant_id'] ?? null;
+        $tenantId = $request->get('tenant_id');
+        // $tenantId = $user['tenant_id'] ?? null;
         $userId   = $user['user_id'] ?? null;
 
 

@@ -2,41 +2,39 @@
 
 class Appointment {
 
-    private static $db;
-
-    private static function db() {
-        if (!self::$db) {
-            self::$db = Database::connect();
-        }
-        return self::$db;
+   private static function db($tenantId)
+    {
+        
+        return DatabaseManager::tenant($tenantId);
     }
 
     public static function getAll($tenantId) {
-
-        $stmt = self::db()->prepare("
+        /* leaving you here as an example if used like this 
+        you will always connect to one database regardless of the tenant
+        */
+        // $db = Database::connect();
+        $stmt = self::db($tenantId)->prepare("
             SELECT id, patient_id, doctor_id, scheduled_at, status, notes
             FROM appointments
-            WHERE tenant_id = ?
-            AND deleted_at IS NULL
+            WHERE deleted_at IS NULL
             ORDER BY scheduled_at ASC
         ");
 
-        $stmt->execute([$tenantId]);
+        $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public static function getById($id, $tenantId) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT id, patient_id, doctor_id, scheduled_at, status, notes
             FROM appointments
             WHERE id = ?
-            AND tenant_id = ?
             AND deleted_at IS NULL
         ");
 
-        $stmt->execute([$id, $tenantId]);
+        $stmt->execute([$id]);
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -47,14 +45,13 @@ class Appointment {
             return false;
         }
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             INSERT INTO appointments
             (tenant_id, patient_id, doctor_id, scheduled_at, status, notes)
             VALUES (?, ?, ?, ?, 'scheduled', ?)
         ");
 
         return $stmt->execute([
-            $tenantId,
             $data['patient_id'],
             $data['doctor_id'],
             $data['scheduled_at'],
@@ -88,55 +85,54 @@ class Appointment {
         }
 
         $sql = "UPDATE appointments SET " . implode(', ', $fields) . "
-                WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL";
+                WHERE id = ? AND deleted_at IS NULL";
 
         $values[] = $id;
-        $values[] = $tenantId;
+        // $values[] = $tenantId;
 
-        $stmt = self::db()->prepare($sql);
+        $stmt = self::db($tenantId)->prepare($sql);
 
         return $stmt->execute($values);
     }
 
     public static function updateNotes($tenantId, $id, $notes) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE appointments
             SET notes = ?
-            WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL
+            WHERE id = ? AND deleted_at IS NULL
         ");
 
-        return $stmt->execute([$notes, $id, $tenantId]);
+        return $stmt->execute([$notes, $id]);
     }
     public static function cancel($tenantId, $id) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE appointments
             SET status = 'cancelled'
-            WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL
+            WHERE id = ? AND deleted_at IS NULL
         ");
 
-        return $stmt->execute([$id, $tenantId]);
+        return $stmt->execute([$id]);
     }
 
     public static function softDelete($tenantId, $id) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE appointments
             SET deleted_at = NOW()
-            WHERE id = ? AND tenant_id = ?
+            WHERE id = ?
         ");
 
-        return $stmt->execute([$id, $tenantId]);
+        return $stmt->execute([$id]);
     }
 
     public static function getUpcoming($tenantId) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT id, patient_id, doctor_id, scheduled_at, status, notes
             FROM appointments
-            WHERE tenant_id = ?
-            AND scheduled_at >= NOW()
+            WHERE scheduled_at >= NOW()
             AND status = 'scheduled'
             AND deleted_at IS NULL
             ORDER BY scheduled_at ASC
@@ -152,21 +148,20 @@ class Appointment {
         $sql = "
             SELECT COUNT(*)
             FROM appointments
-            WHERE tenant_id = ?
-            AND doctor_id = ?
+            WHERE doctor_id = ?
             AND scheduled_at = ?
             AND status != 'cancelled'
             AND deleted_at IS NULL
         ";
 
-        $params = [$tenantId, $doctorId, $scheduledAt];
+        $params = [$doctorId, $scheduledAt];
 
         if ($excludeId) {
             $sql .= " AND id != ?";
             $params[] = $excludeId;
         }
 
-        $stmt = self::db()->prepare($sql);
+        $stmt = self::db($tenantId)->prepare($sql);
         $stmt->execute($params);
 
         return $stmt->fetchColumn() > 0;

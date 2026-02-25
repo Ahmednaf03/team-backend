@@ -2,27 +2,23 @@
 
 class Prescription
 {
-    private static $db;
-
-    private static function db()
+   private static function db($tenantId)
     {
-        if (!self::$db) {
-            self::$db = Database::connect();
-        }
-        return self::$db;
+        
+        return DatabaseManager::tenant($tenantId);
     }
+
 
 
     public static function create($tenantId, $data, $createdBy = null)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             INSERT INTO prescriptions
-            (tenant_id, patient_id, doctor_id, appointment_id, notes, status, prescription_date)
-            VALUES (?, ?, ?, ?, ?, 'PENDING', NOW())
+            ( patient_id, doctor_id, appointment_id, notes, status, prescription_date)
+            VALUES ( ?, ?, ?, ?, 'PENDING', NOW())
         ");
 
         $stmt->execute([
-            $tenantId,
             $data['patient_id'],
             $data['doctor_id'],
             $data['appointment_id'],
@@ -35,15 +31,14 @@ class Prescription
 
     public static function getById($id, $tenantId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT *
             FROM prescriptions
             WHERE id = ?
-            AND tenant_id = ?
             AND deleted_at IS NULL
         ");
 
-        $stmt->execute([$id, $tenantId]);
+        $stmt->execute([$id]);
 
         $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -59,13 +54,12 @@ class Prescription
 
     public static function updateStatus($tenantId, $id, $status, $userId = null)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE prescriptions
             SET status = ?,
                 dispensed_by = ?,
                 dispensed_at = NOW()
             WHERE id = ?
-            AND tenant_id = ?
             AND deleted_at IS NULL
         ");
 
@@ -73,35 +67,32 @@ class Prescription
             $status,
             $userId,
             $id,
-            $tenantId
         ]);
     }
 
 
     public static function softDelete($tenantId, $id)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE prescriptions
             SET deleted_at = NOW()
             WHERE id = ?
-            AND tenant_id = ?
         ");
 
-        return $stmt->execute([$id, $tenantId]);
+        return $stmt->execute([$id]);
     }
 
 
     public static function getAll($tenantId)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT id, patient_id, doctor_id, appointment_id, status, prescription_date
             FROM prescriptions
-            WHERE tenant_id = ?
-            AND deleted_at IS NULL
+            WHERE deleted_at IS NULL 
             ORDER BY prescription_date DESC
         ");
 
-        $stmt->execute([$tenantId]);
+        $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

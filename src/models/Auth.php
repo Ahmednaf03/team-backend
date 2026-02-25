@@ -2,49 +2,48 @@
 
 class Auth
 {
-    private static $db;
+    
 
-    private static function db()
+    private static function db($tenantId)
     {
-        if (!self::$db) {
-            self::$db = Database::connect();
-        }
-        return self::$db;
+        
+        return DatabaseManager::tenant($tenantId);
     }
 
 
-    public static function findUserByEmail($emailHash, $tenantId)
+public static function findUserByEmail($tenantId, $emailHash)
+{
+    // $db = DatabaseManager::tenant($tenantId);
+
+    $stmt = self::db($tenantId)->prepare("
+        SELECT id, password_hash, role
+        FROM users
+        WHERE email_hash = ?
+        LIMIT 1
+    ");
+
+    $stmt->execute([$emailHash]);
+
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+
+public static function createRefreshToken($tenantId, $userId, $token)
+{
+    // $db = DatabaseManager::tenant($tenantId);
+
+   $stmt = self::db($tenantId)->prepare("
+        INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+        VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))
+    ");
+
+    $stmt->execute([$userId, $token]);
+}
+
+
+    public static function findValidRefreshToken($tenantId, $refreshToken)
     {
-        $stmt = self::db()->prepare("
-            SELECT * FROM users
-            WHERE email_hash = ?
-            AND tenant_id = ?
-            AND deleted_at IS NULL
-        ");
-
-        $stmt->execute([$emailHash, $tenantId]);
-
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-
-    public static function createRefreshToken($userId, $tenantId, $refreshToken)
-    {
-        $hash = password_hash($refreshToken, PASSWORD_BCRYPT);
-
-        $stmt = self::db()->prepare("
-            INSERT INTO refresh_tokens
-            (user_id, tenant_id, token_hash, expires_at)
-            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))
-        ");
-
-        return $stmt->execute([$userId, $tenantId, $hash]);
-    }
-
-
-    public static function findValidRefreshToken($refreshToken)
-    {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT * FROM refresh_tokens
             WHERE expires_at > NOW()
         ");
@@ -62,9 +61,9 @@ class Auth
     }
 
 
-    public static function deleteRefreshToken($id)
+    public static function deleteRefreshToken($tenantId, $id)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             DELETE FROM refresh_tokens
             WHERE id = ?
         ");
@@ -73,9 +72,9 @@ class Auth
     }
 
 
-    public static function getUserById($id)
+    public static function getUserById($tenantId, $id)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT * FROM users
             WHERE id = ?
             AND deleted_at IS NULL
@@ -87,9 +86,9 @@ class Auth
     }
 
 
-    public static function updatePassword($userId, $newHash)
+    public static function updatePassword($tenantId, $userId, $newHash)
     {
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE users
             SET password_hash = ?
             WHERE id = ?
@@ -97,4 +96,20 @@ class Auth
 
         return $stmt->execute([$newHash, $userId]);
     }
+
+    public static function findSuperAdminByEmail($email)
+{
+    $db = DatabaseManager::master();
+
+    $stmt = $db->prepare("
+        SELECT id, email, password_hash
+        FROM super_admins
+        WHERE email = ?
+        LIMIT 1
+    ");
+
+    $stmt->execute([$email]);
+
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
 }

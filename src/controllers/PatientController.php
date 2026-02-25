@@ -20,6 +20,7 @@ public static function getById($request, $response, $id) {
 
     if (!$patient) {
         Response::json(null, 404, 'Patient not found');
+        return;
     }
 
     Response::json($patient, 200, 'Patient fetched successfully');
@@ -58,7 +59,7 @@ public static function getById($request, $response, $id) {
         public static function delete($request, $response, $id){
         // this will be provided by tenant middleware
         $tenantId = $request->get('tenant_id');
-        $userId = $request->get('user_id');
+        // $userId = $request->get('user_id');
         $patients = Patient::softDelete($tenantId,$id); //request body deleted here if i break add that
 
         Response::json($patients, 200, 'Patient deleted successfully');

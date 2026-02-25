@@ -4,28 +4,24 @@ require_once __DIR__ . '/../helpers/Encryption.php';
 
 class Communication {
 
-    private static $db;
-
-    private static function db() {
-        if (!self::$db) {
-            self::$db = Database::connect();
-        }
-        return self::$db;
+    private static function db($tenantId)
+    {
+        
+        return DatabaseManager::tenant($tenantId);
     }
 
 
     public static function get($tenantId, $appointmentId) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT id, sender_id, message, created_at
             FROM communication_messages
-            WHERE tenant_id = ?
-            AND appointment_id = ?
+            WHERE appointment_id = ?
             AND deleted_at IS NULL
             ORDER BY created_at ASC
         ");
 
-        $stmt->execute([$tenantId, $appointmentId]);
+        $stmt->execute([$appointmentId]);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($data as &$row) {
@@ -38,14 +34,13 @@ class Communication {
 
     public static function create($tenantId, $appointmentId, $senderId, $data) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             INSERT INTO communication_messages
-            (tenant_id, appointment_id, sender_id, message)
-            VALUES (?, ?, ?, ?)
+            ( appointment_id, sender_id, message)
+            VALUES (?, ?, ?)
         ");
 
         return $stmt->execute([
-            $tenantId,
             $appointmentId,
             $senderId,
             Encryption::encrypt($data['message'])
@@ -55,15 +50,14 @@ class Communication {
 
     public static function getById($id, $tenantId) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT id, sender_id, appointment_id, message, created_at
             FROM communication_messages
             WHERE id = ?
-            AND tenant_id = ?
             AND deleted_at IS NULL
         ");
 
-        $stmt->execute([$id, $tenantId]);
+        $stmt->execute([$id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$row) return null;
@@ -95,12 +89,12 @@ class Communication {
     }
 
     $sql = "UPDATE communication_messages SET " . implode(', ', $fields) . "
-            WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL";
+            WHERE id = ? AND deleted_at IS NULL";
 
     $values[] = $id;
-    $values[] = $tenantId;
+    // $values[] = $tenantId;
 
-    $stmt = self::db()->prepare($sql);
+    $stmt = self::db($tenantId)->prepare($sql);
 
     return $stmt->execute($values);
 }
@@ -109,14 +103,13 @@ class Communication {
 
     public static function softDelete($tenantId, $id) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             UPDATE communication_messages
             SET deleted_at = NOW()
             WHERE id = ?
-            AND tenant_id = ?
         ");
 
-        return $stmt->execute([$id, $tenantId]);
+        return $stmt->execute([$id]);
     }
 
 }

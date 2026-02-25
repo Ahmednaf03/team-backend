@@ -2,18 +2,15 @@
 
 class InvoiceItem {
 
-    private static $db;
-
-    private static function db() {
-        if (!self::$db) {
-            self::$db = Database::connect();
-        }
-        return self::$db;
+ private static function db($tenantId)
+    {
+        
+        return DatabaseManager::tenant($tenantId);
     }
 
-    public static function hasItems($prescriptionId) {
+    public static function hasItems($prescriptionId, $tenantId) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT COUNT(*)
             FROM prescription_items
             WHERE prescription_id = ?
@@ -24,9 +21,9 @@ class InvoiceItem {
         return $stmt->fetchColumn() > 0;
     }
 
-    public static function createFromPrescription($invoiceId, $prescriptionId) {
+    public static function createFromPrescription($invoiceId, $prescriptionId,$tenantId) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT pi.medicine_id, pi.quantity, m.price
             FROM prescription_items pi
             JOIN medicines m ON m.id = pi.medicine_id
@@ -47,7 +44,7 @@ class InvoiceItem {
 
             $lineTotal = $item['quantity'] * $item['price'];
 
-            $insert = self::db()->prepare("
+            $insert = self::db($tenantId)->prepare("
                 INSERT INTO invoice_items
                 (invoice_id, medicine_id, quantity, unit_price, total_price)
                 VALUES (?, ?, ?, ?, ?)
@@ -67,9 +64,9 @@ class InvoiceItem {
         return $total;
     }
 
-    public static function getByInvoiceId($invoiceId) {
+    public static function getByInvoiceId($invoiceId, $tenantId) {
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             SELECT medicine_id, quantity, unit_price, total_price
             FROM invoice_items
             WHERE invoice_id = ?

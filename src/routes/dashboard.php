@@ -58,7 +58,7 @@ $router->get('/api/dashboard/tenant-analytics', function ($request, $response) {
 
     AuthMiddleware::handle($request, $response);
     CSRFMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['super_admin']);
+    RoleMiddleware::handle($request, $response, ['admin']);
 
     DashboardController::tenantAnalytics($request, $response);
 });
