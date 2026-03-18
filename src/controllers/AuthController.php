@@ -230,18 +230,25 @@ class AuthController
         Response::json(null, 200, 'Password changed successfully');
     }
 
-    public static function logout($request, $response)
+  public static function logout($request, $response)
     {
-        $tenantId = $request->get('tenant_id');
-        if (isset($_COOKIE['refresh_token'])) {
+        // 1. Grab the decoded user payload
+        $user = $request->get('user');
+        $tenantId = $user['tenant_id'] ?? $request->get('tenant_id');
+
+        // 2. Revoke the token in the database
+        if ($tenantId && isset($_COOKIE['refresh_token'])) {
             $token = Auth::findValidRefreshToken($tenantId, $_COOKIE['refresh_token']);
+            
             if ($token) {
                 Auth::deleteRefreshToken($tenantId, $token['id']);
             }
         }
 
+        // 3. Destroy the cookie in the browser
         setcookie("refresh_token", "", time() - 3600, "/");
 
+        // 4. Destroy the PHP Session
         $_SESSION = [];
         session_unset();
         session_destroy();

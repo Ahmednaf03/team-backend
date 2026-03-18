@@ -23,10 +23,18 @@ class Auth
 
     public static function createRefreshToken($tenantId, $userId, $token)
     {
-        // 1. Hash the incoming raw token for database security
-        $hashedToken = password_hash($token, PASSWORD_DEFAULT);
+        // 1. HOUSEKEEPING: Delete any already-expired tokens for this user
+        // This stops the database from bloating with hundreds of dead tokens!
+        $cleanupStmt = self::db($tenantId)->prepare("
+            DELETE FROM refresh_tokens 
+            WHERE user_id = ? AND expires_at < NOW()
+        ");
+        $cleanupStmt->execute([$userId]);
 
-        // 2. Insert cleanly without relying on a created_at variable
+        // 2. Hash the new token with lightning-fast SHA-256
+        $hashedToken = hash('sha256', $token);
+
+        // 3. INSERT the new token (so they can use their phone AND laptop!)
         $stmt = self::db($tenantId)->prepare("
             INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
             VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))
@@ -35,24 +43,21 @@ class Auth
         $stmt->execute([$userId, $hashedToken]);
     }
 
-    public static function findValidRefreshToken($tenantId, $refreshToken)
+   public static function findValidRefreshToken($tenantId, $refreshToken)
     {
+        // 1. Hash the incoming cookie exactly the same way (SHA-256)
+        $hashedToken = hash('sha256', $refreshToken);
+
+        // 2. Search the database DIRECTLY for the hash. No more slow loops!
         $stmt = self::db($tenantId)->prepare("
             SELECT * FROM refresh_tokens
-            WHERE expires_at > NOW()
+            WHERE token_hash = ? AND expires_at > NOW()
+            LIMIT 1
         ");
 
-        $stmt->execute();
-        $tokens = $stmt->fetchAll();
-
-        foreach ($tokens as $token) {
-            // Compare the raw cookie string to the hashed database string
-            if (password_verify($refreshToken, $token['token_hash'])) {
-                return $token;
-            }
-        }
-
-        return null; // Token was not found or was expired
+        $stmt->execute([$hashedToken]);
+        
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public static function deleteRefreshToken($tenantId, $id)
