@@ -34,7 +34,7 @@ $router->post('/api/login', function ($request, $response) {
 $router->post('/api/refresh', function ($request, $response) {
 
     JsonMiddleware::handle($request, $response);
-
+    TenantMiddleware::handle($request, $response);
     AuthController::refresh($request, $response);
 });
 

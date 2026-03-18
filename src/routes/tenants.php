@@ -11,6 +11,15 @@ $router->get('/api/tenants', function ($request, $response) {
 });
 
 
+$router->get('/api/resolve', function ($request, $response) {
+
+    // AuthMiddleware::handle($request, $response);
+    // RoleMiddleware::handle($request, $response, [null]); 
+
+    TenantController::getResolve($request, $response);
+});
+
+
 $router->post('/api/tenants', function ($request, $response) {
 
     AuthMiddleware::handle($request, $response);

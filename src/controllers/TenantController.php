@@ -8,6 +8,32 @@ class TenantController
         Response::json($tenants, 200, 'Tenants fetched successfully');
     }
 
+
+public static function getResolve($request, $response)
+    {
+        // 1. Extract the header using your custom method.
+        // (Note: HTTP headers sent by Axios are usually title-cased or lower-cased, 
+        // so checking 'X-Tenant-Slug' usually matches what React sends).
+        $slug = $request->header('X-Tenant-Slug') ?? $request->header('X-TENANT-SLUG');
+
+        if (!$slug) {
+            Response::json(['error' => 'Missing tenant slug header'], 400);
+            return;
+        }
+
+        // 2. Query the model to find the specific tenant
+        $tenant = Tenant::getResolveBySlug($slug);
+
+        // 3. Handle the "Workspace Not Found" scenario
+        if (!$tenant) {
+            Response::json(['error' => 'Workspace not found or inactive'], 404);
+            return;
+        }
+
+        // 4. Return the safe public data (No DB credentials!)
+        Response::json($tenant, 200, 'Tenant resolved successfully');
+    }
+
     public static function create($request, $response)
     {
         $data = $request->body();

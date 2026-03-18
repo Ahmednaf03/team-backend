@@ -111,19 +111,19 @@ public static function signup($request, $response)
     ]);
 
     $refreshToken = bin2hex(random_bytes(64));
-
+    $hashedRefreshToken = password_hash($refreshToken, PASSWORD_BCRYPT);
     Auth::createRefreshToken(
         $tenantId,
         $user['id'],
-        $refreshToken
+        $hashedRefreshToken
     );
 
-    setcookie("refresh_token", $refreshToken, [
+    setcookie("refresh_token", $hashedRefreshToken, [
         'expires'  => time() + $_ENV['REFRESH_EXPIRY'],
         'path'     => '/',
         'httponly' => true,
         'secure'   => false,
-        'samesite' => 'Strict'
+        'samesite' => 'Lax'
     ]);
 
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -135,55 +135,69 @@ public static function signup($request, $response)
 }
 
 
-    public static function refresh($request, $response){
-        if (!isset($_COOKIE['refresh_token'])) {
-            Response::json(null, 401, 'No refresh token');
-            return;
-        }
-        $tenantId = $request->get('tenant_id');
-
-        $token = Auth::findValidRefreshToken($tenantId, $_COOKIE['refresh_token']);
-
-        if (!$token) {
-            Response::json(null, 401, 'Invalid refresh token');
-            return;
-        }
-
-        Auth::deleteRefreshToken($tenantId, $token['id']);
-
-        $user = Auth::getUserById($tenantId, $token['user_id']);
-
-        $accessToken = JWT::generateAccessToken([
-            'user_id'   => $user['id'],
-            'tenant_id' => $user['tenant_id'],
-            'role'      => $user['role']
-        ]);
-
-        $_SESSION['access_token'] = $accessToken;
-
-        $newRefresh = bin2hex(random_bytes(64));
-
-        Auth::createRefreshToken(
-            $user['id'],
-            $user['tenant_id'],
-            $newRefresh
-        );
-
-        setcookie("refresh_token", $newRefresh, [
-            'expires'  => time() + $_ENV['REFRESH_EXPIRY'],
-            'path'     => '/',
-            'httponly' => true,
-            'secure'   => false,
-            'samesite' => 'Strict'
-        ]);
-
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
-        Response::json([
-            'access_token' => $accessToken,
-            'csrf_token'   => $_SESSION['csrf_token']
-        ], 200, 'Token refreshed');
+public static function refresh($request, $response){
+    if (!isset($_COOKIE['refresh_token'])) {
+        Response::json(null, 401, 'No refresh token');
+        return;
     }
+    
+    // 1. FIX THE TENANT ID EXTRACTION
+    // Check if TenantMiddleware attached it as a property, or if it's in the body/params.
+    $tenantId = $request->tenant_id ?? $request->get('tenant_id'); 
+    
+    // Safety check so it doesn't crash the database if missing!
+    if (!$tenantId) {
+        Response::json(null, 400, 'Missing Tenant ID from Middleware');
+        return;
+    }
+
+    $token = Auth::findValidRefreshToken($tenantId, $_COOKIE['refresh_token']);
+
+    if (!$token) {
+        Response::json(null, 401, 'Invalid refresh token');
+        return;
+    }
+
+    Auth::deleteRefreshToken($tenantId, $token['id']);
+
+    $user = Auth::getUserById($tenantId, $token['user_id']);
+
+    $accessToken = JWT::generateAccessToken([
+        'user_id'   => $user['id'],
+        'tenant_id' => $user['tenant_id'],
+        'role'      => $user['role']
+    ]);
+
+    $_SESSION['access_token'] = $accessToken;
+
+    $newRefresh = bin2hex(random_bytes(64));
+    //encrypt me please
+
+    
+
+    // 2. FIX THE FLIPPED PARAMETERS
+    // Model expects: ($tenantId, $userId, $token)
+    Auth::createRefreshToken(
+        $user['tenant_id'], // Tenant ID MUST be first
+        $user['id'],        // User ID MUST be second
+        $newRefresh
+    );
+
+    setcookie("refresh_token", $newRefresh, [
+        'expires'  => time() + $_ENV['REFRESH_EXPIRY'],
+        'path'     => '/',
+        'httponly' => true,
+        'secure'   => false,
+        'samesite' => 'Lax'
+    ]);
+
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
+    Response::json([
+        'access_token' => $accessToken,
+        'csrf_token'   => $_SESSION['csrf_token']
+    ], 200, 'Token refreshed');
+}
 
 
     public static function changePassword($request, $response)

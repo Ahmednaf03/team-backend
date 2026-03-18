@@ -30,14 +30,18 @@ public static function findUserByEmail($tenantId, $emailHash)
 
 public static function createRefreshToken($tenantId, $userId, $token)
 {
-    // $db = DatabaseManager::tenant($tenantId);
+    // 1. MUST BE UNCOMMENTED: Hash the token so password_verify() works later!
+    // $hashedToken = password_hash($token, PASSWORD_DEFAULT);
 
-   $stmt = self::db($tenantId)->prepare("
+    // 2. Remove 'created_at' from the query (MySQL handles it automatically)
+    $stmt = self::db($tenantId)->prepare("
         INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
         VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))
     ");
 
-    $stmt->execute([$userId, $token]);
+    // 3. Pass ONLY the User ID and the Hashed Token.
+    // (Do not pass $tenantId in this array, the table doesn't have that column!)
+    $stmt->execute([$userId, $hashedToken]);
 }
 
 
