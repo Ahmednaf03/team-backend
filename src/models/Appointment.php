@@ -47,8 +47,8 @@ class Appointment {
 
         $stmt = self::db($tenantId)->prepare("
             INSERT INTO appointments
-            (tenant_id, patient_id, doctor_id, scheduled_at, status, notes)
-            VALUES (?, ?, ?, ?, 'scheduled', ?)
+            (patient_id, doctor_id, scheduled_at, status, notes)
+            VALUES (?, ?, ?, 'scheduled', ?)
         ");
 
         return $stmt->execute([
