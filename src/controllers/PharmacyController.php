@@ -59,6 +59,11 @@ class PharmacyController
 
         $items = PrescriptionItems::getByPrescription($tenantId, $id);
 
+        if (empty($items)) {
+            Response::json(null, 422, 'No prescription items found');
+            return;
+        }
+
         foreach ($items as $item) {
             Medicine::reduceStock(
                 $tenantId,

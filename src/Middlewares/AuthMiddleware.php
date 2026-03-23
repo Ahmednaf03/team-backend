@@ -28,12 +28,12 @@ class AuthMiddleware
         }
 
         // Inject into request (NOT session)
-        $request->set('user', [
-            'user_id'   => $payload['user_id'],
-            'tenant_id' => $payload['tenant_id'],
-            'role'      => $payload['role'],
-            'is_super_admin' => $payload['is_super_admin']
-        ]);
+$request->set('user', [
+    'user_id'        => $payload['user_id'],
+    'tenant_id'      => $payload['tenant_id'],
+    'role'           => $payload['role'],
+    'is_super_admin' => $payload['is_super_admin'] ?? false
+]);
 
         return $payload;
     }

@@ -70,6 +70,16 @@ class BillingController {
         Response::json($paid, 200, 'Payment successful');
     }
 
+
+    public static function getAll($request, $response) {
+
+        $tenantId = $request->get('tenant_id');
+
+        $data = Invoice::getAll($tenantId);
+
+        Response::json($data, 200, 'Invoices fetched successfully');
+    }
+
     public static function summary($request, $response) {
 
         $tenantId = $request->get('tenant_id');

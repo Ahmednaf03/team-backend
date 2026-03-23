@@ -25,7 +25,7 @@ class Prescription
             Encryption::encrypt($data['notes'])
         ]);
 
-        return self::db()->lastInsertId();
+        return self::db($tenantId)->lastInsertId();
     }
 
 
@@ -54,20 +54,34 @@ class Prescription
 
     public static function updateStatus($tenantId, $id, $status, $userId = null)
     {
-        $stmt = self::db($tenantId)->prepare("
-            UPDATE prescriptions
-            SET status = ?,
-                dispensed_by = ?,
-                dispensed_at = NOW()
-            WHERE id = ?
-            AND deleted_at IS NULL
-        ");
+        if ($status === 'DISPENSED') {
+            $stmt = self::db($tenantId)->prepare("
+                UPDATE prescriptions
+                SET status = ?,
+                    dispensed_by = ?,
+                    dispensed_at = NOW()
+                WHERE id = ?
+                AND deleted_at IS NULL
+            ");
 
-        return $stmt->execute([
-            $status,
-            $userId,
-            $id,
-        ]);
+            return $stmt->execute([
+                $status,
+                $userId,
+                $id,
+            ]);
+        } else {
+            $stmt = self::db($tenantId)->prepare("
+                UPDATE prescriptions
+                SET status = ?
+                WHERE id = ?
+                AND deleted_at IS NULL
+            ");
+
+            return $stmt->execute([
+                $status,
+                $id,
+            ]);
+        }
     }
 
 

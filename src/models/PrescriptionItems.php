@@ -44,7 +44,7 @@ class PrescriptionItems
         $existing = $check->fetch(PDO::FETCH_ASSOC);
 
         if ($existing) {
-            $update = self::db()->prepare("
+            $update = self::db($tenantId)->prepare("
                 UPDATE prescription_items
                 SET quantity = quantity + ?
                 WHERE id = ?
@@ -56,7 +56,7 @@ class PrescriptionItems
             ]);
         }
 
-        $stmt = self::db()->prepare("
+        $stmt = self::db($tenantId)->prepare("
             INSERT INTO prescription_items
             ( prescription_id, medicine_id,
              dosage, frequency, duration_days, quantity, instructions)

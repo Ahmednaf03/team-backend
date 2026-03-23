@@ -15,6 +15,7 @@ $router->get('/api/resolve', function ($request, $response) {
 
     // AuthMiddleware::handle($request, $response);
     // RoleMiddleware::handle($request, $response, [null]); 
+    // JsonMiddleware::handle($request, $response);
 
     TenantController::getResolve($request, $response);
 });

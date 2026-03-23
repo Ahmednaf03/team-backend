@@ -25,6 +25,18 @@ $router->get('/api/billing/summary', function ($request, $response) {
 });
 
 
+$router->get('/api/billing', function ($request, $response) {
+
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
+
+    TenantMiddleware::handle($request, $response);
+    RoleMiddleware::handle($request, $response, ['admin']);
+
+    BillingController::getAll($request, $response);
+});
+
+
 /*
 |--------------------------------------------------------------------------
 | POST /api/billing
