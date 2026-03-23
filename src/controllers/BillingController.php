@@ -67,6 +67,16 @@ class BillingController {
             return;
         }
 
+        // Notify patient of successful payment
+        Notification::create($tenantId, [
+            'user_id' => $invoice['patient_id'],
+            'user_type' => 'patient',
+            'type' => 'payment',
+            'title' => 'Payment Successful',
+            'message' => "Payment of {$invoice['total_amount']} has been processed",
+            'reference_id' => $id
+        ]);
+
         Response::json($paid, 200, 'Payment successful');
     }
 

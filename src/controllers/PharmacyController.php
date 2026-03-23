@@ -31,6 +31,16 @@ class PharmacyController
             return;
         }
 
+        // Notify patient of verification
+        Notification::create($tenantId, [
+            'user_id' => $prescription['patient_id'],
+            'user_type' => 'patient',
+            'type' => 'prescription',
+            'title' => 'Prescription Verified',
+            'message' => "Your prescription has been verified and is ready for dispensing",
+            'reference_id' => $id
+        ]);
+
         Response::json($updated, 200, 'Prescription verified successfully');
     }
 
@@ -83,6 +93,16 @@ class PharmacyController
             Response::json(null, 500, 'Dispense failed');
             return;
         }
+
+        // Notify patient of dispensing
+        Notification::create($tenantId, [
+            'user_id' => $prescription['patient_id'],
+            'user_type' => 'patient',
+            'type' => 'prescription',
+            'title' => 'Prescription Dispensed',
+            'message' => "Your prescription has been dispensed successfully",
+            'reference_id' => $id
+        ]);
 
         Response::json($updated, 200, 'Prescription dispensed successfully');
     }

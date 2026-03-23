@@ -51,12 +51,18 @@ class Appointment {
             VALUES (?, ?, ?, 'scheduled', ?)
         ");
 
-        return $stmt->execute([
+        $success = $stmt->execute([
             $data['patient_id'],
             $data['doctor_id'],
             $data['scheduled_at'],
             $data['notes'] ?? null
         ]);
+
+        if (!$success) {
+            return false;
+        }
+
+        return self::db($tenantId)->lastInsertId();
     }
 
     public static function update($tenantId, $id, $data) {

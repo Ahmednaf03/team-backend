@@ -51,7 +51,27 @@ class AppointmentController {
             return;
         }
 
-        Response::json($created, 201, 'Appointment created successfully');
+        // Notify patient
+        Notification::create($tenantId, [
+            'user_id' => $data['patient_id'],
+            'user_type' => 'patient',
+            'type' => 'appointment',
+            'title' => 'Appointment Scheduled',
+            'message' => "Your appointment is scheduled for {$data['scheduled_at']}",
+            'reference_id' => $created
+        ]);
+
+        // Notify doctor
+        Notification::create($tenantId, [
+            'user_id' => $data['doctor_id'],
+            'user_type' => 'staff',
+            'type' => 'appointment',
+            'title' => 'New Appointment',
+            'message' => "New appointment scheduled with patient",
+            'reference_id' => $created
+        ]);
+
+        Response::json(['appointment_id' => $created], 201, 'Appointment created successfully');
     }
 
     public static function update($request, $response, $id) {
