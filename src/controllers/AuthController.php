@@ -103,6 +103,11 @@ class AuthController
             return;
         }
 
+        if ($user['status'] !== 'active') {
+            Response::json(null, 401, 'Account not active');
+            return;
+        }
+
         $accessToken = JWT::generateAccessToken([
             'user_id'        => $user['id'],
             'tenant_id'      => $tenantId,

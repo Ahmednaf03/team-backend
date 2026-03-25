@@ -18,7 +18,7 @@ $router->get('/api/notifications', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'staff', 'patient']);
+    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'receptionist', 'staff', 'patient']);
 
     NotificationController::getAll($request, $response);
 });
@@ -35,7 +35,7 @@ $router->patch('/api/notifications/read', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'staff', 'patient']);
+    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'receptionist', 'staff', 'patient']);
 
     $uri = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));
@@ -63,7 +63,7 @@ $router->patch('/api/notifications/read-all', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'staff', 'patient']);
+    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'receptionist', 'staff', 'patient']);
 
     NotificationController::markAllRead($request, $response);
 });

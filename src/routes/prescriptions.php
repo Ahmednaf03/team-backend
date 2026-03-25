@@ -20,7 +20,7 @@ $router->get('/api/prescriptions', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['provider', 'admin', 'pharmacist']);
+    RoleMiddleware::handle($request, $response, ['provider', 'admin', 'pharmacist', 'nurse']);
 
     $uri = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));

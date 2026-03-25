@@ -98,7 +98,7 @@ public static function create($tenantId, $prescriptionId, $patientId){
     public static function getAll($tenantId) {
 
         $stmt = self::db($tenantId)->prepare("
-            SELECT id, prescription_id, patient_id, total_amount, status, paid_at
+            SELECT id, prescription_id, patient_id, total_amount, status, created_at, paid_at
             FROM invoices
             ORDER BY id DESC
         ");

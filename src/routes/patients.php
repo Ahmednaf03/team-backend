@@ -15,7 +15,7 @@ $router->get('/api/patients', function ($request, $response) use ($pdo) {
     AuthMiddleware::handle($request, $response);
     CSRFMiddleware::handle($request, $response);
     TenantMiddleware::handle($request,$response);
-    RoleMiddleware::handle($request,$response, ['admin', 'provider']);
+    RoleMiddleware::handle($request,$response, ['admin', 'provider', 'nurse', 'receptionist']);
        // If URL is /api/patients/1
     $uri = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));

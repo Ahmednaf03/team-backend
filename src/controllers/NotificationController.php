@@ -19,7 +19,7 @@ class NotificationController
         // Map role to user_type for notifications
         $userRole = $user['role'] ?? 'patient';
         
-        $staffRoles = ['admin', 'provider', 'pharmacist', 'nurse'];
+        $staffRoles = ['admin', 'provider', 'pharmacist', 'nurse', 'receptionist'];
         
         return in_array($userRole, $staffRoles) ? 'staff' : 'patient';
     }

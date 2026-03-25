@@ -10,8 +10,7 @@ class Staff {
 
 
     private static function staffRoles() {
-        return ['provider', 'nurse', 'pharmacist'];
-        // add 'receptionist' if needed
+        return ['provider', 'nurse', 'pharmacist', 'receptionist'];
     }
 
     public static function getAll($tenantId) {
@@ -60,7 +59,7 @@ class Staff {
             VALUES ( ?, ?, ?, ?, ?, 'active')
         ");
 
-        $emailHash = hash('sha256', strtolower(trim($data['email'])));
+        $emailHash = Encryption::blindIndex($data['email']);
 
         $success = $stmt->execute([
         Encryption::encrypt($data['name']),
@@ -83,9 +82,9 @@ class Staff {
         $fields = [];
         $values = [];
 
-        if (isset($data['name'])) {
+       if (isset($data['name'])) {
             $fields[] = "name = ?";
-            $values[] = $data['name'];
+            $values[] = Encryption::encrypt($data['name']);
         }
 
         if (isset($data['status'])) {
@@ -132,7 +131,7 @@ class Staff {
             SELECT id
             FROM users
             WHERE id = ?
-            AND role IN ('provider','nurse','pharmacist')
+            AND role IN ('provider','nurse','pharmacist','receptionist')
             AND deleted_at IS NULL
         ");
 

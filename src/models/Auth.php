@@ -10,7 +10,7 @@ class Auth
     public static function findUserByEmail($tenantId, $emailHash)
     {
         $stmt = self::db($tenantId)->prepare("
-            SELECT id, password_hash, role
+            SELECT id, password_hash, role, status
             FROM users
             WHERE email_hash = ?
             LIMIT 1
@@ -75,7 +75,7 @@ class Auth
         $stmt = self::db($tenantId)->prepare("
             SELECT * FROM users
             WHERE id = ?
-            AND deleted_at IS NULL
+            AND deleted_at IS NULL 
         ");
 
         $stmt->execute([$id]);

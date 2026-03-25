@@ -51,6 +51,10 @@ class AppointmentController {
             return;
         }
 
+        $patient = Patient::getById($data['patient_id'], $tenantId);
+        $patientName = $patient['name'] ?? 'Patient';
+        $staffMessage = "New appointment with {$patientName} on {$data['scheduled_at']}";
+
         // Notify patient
         Notification::create($tenantId, [
             'user_id' => $data['patient_id'],
@@ -67,7 +71,7 @@ class AppointmentController {
             'user_type' => 'staff',
             'type' => 'appointment',
             'title' => 'New Appointment',
-            'message' => "New appointment scheduled with patient",
+            'message' => $staffMessage,
             'reference_id' => $created
         ]);
 

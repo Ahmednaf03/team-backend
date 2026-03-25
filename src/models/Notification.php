@@ -11,8 +11,7 @@ class Notification
         return DatabaseManager::tenant($tenantId);
     }
 
-    public static function getAll($userId, $userType)
-    {
+    public static function getAll($userId, $userType){
         $stmt = self::db()->prepare("
             SELECT id, type, title, message, is_read, reference_id, created_at
             FROM notifications
@@ -69,9 +68,11 @@ class Notification
         return $stmt->rowCount();
     }
 
-    public static function create($data)
+    public static function create($tenantId, $data)
     {
-        $stmt = self::db()->prepare("
+        $db = self::db($tenantId);
+
+        $stmt = $db->prepare("
             INSERT INTO notifications
             (user_id, user_type, type, title, message, reference_id)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -86,6 +87,6 @@ class Notification
             $data['reference_id'] ?? null
         ]);
 
-        return self::db()->lastInsertId();
+        return $db->lastInsertId();
     }
 }

@@ -84,7 +84,7 @@ $router->put('/api/messages', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['provider', 'admin']);
+    RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin']);
 
     $uri = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));

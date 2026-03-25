@@ -82,6 +82,22 @@ class CommunicationController {
     public static function update($request, $response, $id) {
 
         $tenantId = $request->get('tenant_id');
+        $user = $request->get('user');
+
+        $message = Communication::getById($id, $tenantId);
+
+        if (!$message) {
+            Response::json(null, 404, 'Message not found');
+            return;
+        }
+
+        $isAdmin = ($user['role'] ?? null) === 'admin';
+        $isSender = (int) ($message['sender_id'] ?? 0) === (int) ($user['user_id'] ?? 0);
+
+        if (!$isAdmin && !$isSender) {
+            Response::json(null, 403, 'Forbidden');
+            return;
+        }
 
         $updated = Communication::update($tenantId, $id, $request->body());
 
