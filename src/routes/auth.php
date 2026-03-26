@@ -31,6 +31,17 @@ $router->post('/api/login', function ($request, $response) {
 });
 
 
+// ─── Patient Portal Login ─────────────────────────────────────────────────
+$router->post('/api/patient-login', function ($request, $response) {
+
+    JsonMiddleware::handle($request, $response);
+    TenantMiddleware::handle($request, $response);
+
+    AuthController::patientLogin($request, $response);
+});
+// ─────────────────────────────────────────────────────────────────────────
+
+
 $router->post('/api/refresh', function ($request, $response) {
 
     JsonMiddleware::handle($request, $response);

@@ -1,64 +1,47 @@
 <?php
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PATIENT PROFILE  (patient's own — called after patient portal login)
+// Role guard is enforced inside PatientController::getProfile()
+// ─────────────────────────────────────────────────────────────────────────────
+$router->get('/api/patient/profile', function ($request, $response) {
 
+    AuthMiddleware::handle($request, $response);
+    TenantMiddleware::handle($request, $response);
+    // No CSRFMiddleware on GET — CSRF only applies to state-mutating requests
+    // No RoleMiddleware — PatientController::getProfile() enforces role = 'patient'
+
+    PatientController::getProfile($request, $response);
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN / STAFF ROUTES (existing — unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
 
 $router->get('/api/patients', function ($request, $response) use ($pdo) {
 
-    //un comment me once auth and tenant middleware are implemented
-    // AuthMiddleware::handle($request);
-    //    $request->set('user', [
-    //     'user_id'   => 2,
-    //     'tenant_id' => 1,
-    //     'role'      => 'provider'
-    // ]);
-
     AuthMiddleware::handle($request, $response);
     CSRFMiddleware::handle($request, $response);
-    TenantMiddleware::handle($request,$response);
-    RoleMiddleware::handle($request,$response, ['admin', 'provider', 'nurse', 'receptionist']);
-       // If URL is /api/patients/1
-    $uri = parse_url($request->uri(), PHP_URL_PATH);
-    $segments = explode('/', trim($uri, '/'));
+    TenantMiddleware::handle($request, $response);
+    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'nurse', 'receptionist']);
 
-    // segments: ['api','patients','1']
-    $id = $segments[2] ?? null;
+    $uri      = parse_url($request->uri(), PHP_URL_PATH);
+    $segments = explode('/', trim($uri, '/'));
+    $id       = $segments[2] ?? null;
 
     if ($id) {
         PatientController::getById($request, $response, $id);
     } else {
         PatientController::get($request, $response);
     }
-
-    // PatientController::get($request, $response);
 });
-
-// $router->get('/api/patients/{id}', function ($request, $response, $id) use ($pdo) {
-
-//     $request->set('user', [
-//         'user_id'   => 2,
-//         'tenant_id' => 1,
-//         'role'      => 'provider'
-//     ]);
-
-//     TenantMiddleware::handle($request, $response);
-//     RoleMiddleware::handle($request, $response, ['admin', 'provider']);
-
-//     PatientController::getById($request, $response, $id);
-// });
 
 
 $router->post('/api/patients', function ($request, $response) use ($pdo) {
 
-    // $request->set('user', [
-    //     'user_id'   => 2,
-    //     'tenant_id' => 1,
-    //     'role'      => 'admin'
-    // ]);
-
-
     AuthMiddleware::handle($request, $response);
     CSRFMiddleware::handle($request, $response);
-
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['admin']);
 
@@ -68,22 +51,14 @@ $router->post('/api/patients', function ($request, $response) use ($pdo) {
 
 $router->put('/api/patients', function ($request, $response) use ($pdo) {
 
-    // $request->set('user', [
-    //     'user_id'   => 2,
-    //     'tenant_id' => 1,
-    //     'role'      => 'admin'
-    // ]);
-
     AuthMiddleware::handle($request, $response);
     CSRFMiddleware::handle($request, $response);
-
     TenantMiddleware::handle($request, $response);
     RoleMiddleware::handle($request, $response, ['admin']);
 
-    $uri = parse_url($request->uri(), PHP_URL_PATH);
+    $uri      = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));
-
-    $id = $segments[2] ?? null;
+    $id       = $segments[2] ?? null;
 
     if (!$id) {
         Response::json(null, 400, 'Patient ID required');
@@ -94,21 +69,12 @@ $router->put('/api/patients', function ($request, $response) use ($pdo) {
 });
 
 
-
 $router->delete('/api/patients', function ($request, $response) use ($pdo) {
 
-    // $request->set('user', [
-    //     'user_id'   => 2,
-    //     'tenant_id' => 1,
-    //     'role'      => 'admin'
-    // ]);
-
-
-     $uri = parse_url($request->uri(), PHP_URL_PATH);
+    $uri      = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));
+    $id       = $segments[2] ?? null;
 
-    // segments: ['api','patients','1']
-    $id = $segments[2] ?? null;
     AuthMiddleware::handle($request, $response);
     CSRFMiddleware::handle($request, $response);
     TenantMiddleware::handle($request, $response);

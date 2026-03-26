@@ -101,7 +101,12 @@ class AuthController
         if (!$user || !password_verify($data['password'], $user['password_hash'])) {
             Response::json(null, 401, 'Invalid credentials');
             return;
+        }else{
+        //check if the credential match in patiets table 
+        // $user = Auth::findPatientByEmail($tenantId, $hashedEmail);
         }
+
+       
 
         if ($user['status'] !== 'active') {
             Response::json(null, 401, 'Account not active');
@@ -259,5 +264,67 @@ class AuthController
         session_destroy();
 
         Response::json(null, 200, 'Logged out successfully');
+    }
+
+
+
+    public static function patientLogin($request, $response)
+    {
+        $data = $request->body();
+ 
+        if (!isset($data['email'], $data['password'])) {
+            Response::json(null, 400, 'Email and password required');
+            return;
+        }
+ 
+        $tenantId = $request->get('tenant_id');
+ 
+        if (!$tenantId) {
+            Response::json(null, 400, 'Tenant missing');
+            return;
+        }
+ 
+        // Blind-index the incoming email exactly like the staff login does
+        $hashedEmail = Encryption::blindIndex($data['email']);
+ 
+        $patient = Auth::findPatientByEmail($tenantId, $hashedEmail);
+ 
+        if (!$patient || !password_verify($data['password'], $patient['password_hash'])) {
+            Response::json(null, 401, 'Invalid credentials');
+            return;
+        }
+ 
+        if ($patient['status'] !== 'active') {
+            Response::json(null, 401, 'Account not active');
+            return;
+        }
+ 
+        // Issue access token — role is always 'patient'
+        $accessToken = JWT::generateAccessToken([
+            'user_id'        => $patient['id'],
+            'tenant_id'      => $tenantId,
+            'role'           => 'patient',
+            'is_super_admin' => false,
+        ]);
+ 
+        // Refresh token — reuses the same refresh_tokens table
+        $refreshToken = bin2hex(random_bytes(64));
+ 
+        Auth::createRefreshToken($tenantId, $patient['id'], $refreshToken);
+ 
+        setcookie('refresh_token', $refreshToken, [
+            'expires'  => time() + $_ENV['REFRESH_EXPIRY'],
+            'path'     => '/',
+            'httponly' => true,
+            'secure'   => false,
+            'samesite' => 'Lax',
+        ]);
+ 
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+ 
+        Response::json([
+            'access_token' => $accessToken,
+            'csrf_token'   => $_SESSION['csrf_token'],
+        ], 200, 'Patient login successful');
     }
 }

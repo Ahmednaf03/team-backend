@@ -109,4 +109,37 @@ class Auth
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+
+    public static function findPatientByEmail($tenantId, $emailHash)
+    {
+        $stmt = self::db($tenantId)->prepare("
+            SELECT id, password_hash, status
+            FROM patients
+            WHERE email_hash = ?
+              AND deleted_at IS NULL
+            LIMIT 1
+        ");
+ 
+        $stmt->execute([$emailHash]);
+ 
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+ 
+    /**
+     * Fetch a patient row by primary key (used after token generation).
+     */
+    public static function getPatientById($tenantId, $id)
+    {
+        $stmt = self::db($tenantId)->prepare("
+            SELECT id, name, status
+            FROM patients
+            WHERE id = ?
+              AND deleted_at IS NULL
+        ");
+ 
+        $stmt->execute([$id]);
+ 
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 }
