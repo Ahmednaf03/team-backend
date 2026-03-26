@@ -31,6 +31,17 @@ $router->post('/api/login', function ($request, $response) {
 });
 
 
+// ─── Patient Portal Login ─────────────────────────────────────────────────
+$router->post('/api/patient-login', function ($request, $response) {
+
+    JsonMiddleware::handle($request, $response);
+    TenantMiddleware::handle($request, $response);
+
+    AuthController::patientLogin($request, $response);
+});
+// ─────────────────────────────────────────────────────────────────────────
+
+
 $router->post('/api/refresh', function ($request, $response) {
 
     JsonMiddleware::handle($request, $response);
@@ -59,8 +70,6 @@ $router->get('/api/profile', function ($request, $response) {
         'user' => $user
     ], 200, 'Profile fetched successfully');
 });
-
-
 
 $router->post('/api/change-password', function ($request, $response) {
     JsonMiddleware::handle($request, $response);

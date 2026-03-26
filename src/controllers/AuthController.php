@@ -19,8 +19,7 @@ class AuthController
             Response::json(null, 422, 'Missing required fields');
             return;
         }
-        
-        // provided by tenant middleware
+
         $tenantId = $request->get('tenant_id');
 
         if (!$tenantId) {
@@ -53,11 +52,6 @@ class AuthController
 
         $headers = getallheaders();
 
-        /*
-        |--------------------------------------------------------------------------
-        | SUPER ADMIN LOGIN
-        |--------------------------------------------------------------------------
-        */
         if (!empty($headers['X-SUPER-ADMIN'])) {
 
             $admin = Auth::findSuperAdminByEmail($data['email']);
@@ -80,12 +74,6 @@ class AuthController
 
             return;
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | TENANT USER LOGIN
-        |--------------------------------------------------------------------------
-        */
 
         $tenantId = $request->get('tenant_id');
 
@@ -115,17 +103,14 @@ class AuthController
             'is_super_admin' => false
         ]);
 
-        // 1. Generate the RAW token
         $refreshToken = bin2hex(random_bytes(64));
-        
-        // 2. Pass the RAW token to the model (The model will hash it before saving)
+
         Auth::createRefreshToken(
             $tenantId,
             $user['id'],
             $refreshToken
         );
 
-        // 3. Put the RAW token in the cookie so it matches what password_verify expects
         setcookie("refresh_token", $refreshToken, [
             'expires'  => time() + $_ENV['REFRESH_EXPIRY'],
             'path'     => '/',
@@ -148,16 +133,14 @@ class AuthController
             Response::json(null, 401, 'No refresh token');
             return;
         }
-        
-        // Grab the Tenant ID from middleware or request
-        $tenantId = $request->tenant_id ?? $request->get('tenant_id'); 
-        
+
+        $tenantId = $request->tenant_id ?? $request->get('tenant_id');
+
         if (!$tenantId) {
             Response::json(null, 400, 'Missing Tenant ID');
             return;
         }
 
-        // Verify the raw cookie against the hashed database tokens
         $token = Auth::findValidRefreshToken($tenantId, $_COOKIE['refresh_token']);
 
         if (!$token) {
@@ -177,17 +160,14 @@ class AuthController
 
         $_SESSION['access_token'] = $accessToken;
 
-        // 1. Generate the new RAW token
         $newRefresh = bin2hex(random_bytes(64));
 
-        // 2. Pass the RAW token to the model to be hashed and saved
         Auth::createRefreshToken(
-            $tenantId, 
-            $user['id'],        
+            $tenantId,
+            $user['id'],
             $newRefresh
         );
 
-        // 3. Set the RAW token in the new cookie
         setcookie("refresh_token", $newRefresh, [
             'expires'  => time() + $_ENV['REFRESH_EXPIRY'],
             'path'     => '/',
@@ -203,70 +183,124 @@ class AuthController
             'csrf_token'   => $_SESSION['csrf_token']
         ], 200, 'Token refreshed');
     }
-public static function changePassword($request, $response) {
-    $user = $request->get('user');
-    $tenantId = $request->get('tenant_id');
 
-    if (!$user) {
-        Response::json(null, 401, 'Unauthorized');
-        return;
-    }
-
-    $data = $request->body();
-
-    if (!isset($data['old_password'], $data['new_password'])) {
-        Response::json(null, 400, 'Missing fields');
-        return;
-    }
-
-    $dbUser = Auth::getUserById($tenantId, $user['user_id']);
-
-    if (!$dbUser) {
-        Response::json(null, 404, 'User not found');
-        return;
-    }
-
-    if (!password_verify($data['old_password'], $dbUser['password_hash'])) {
-        Response::json(null, 401, 'Old password incorrect');
-        return;
-    }
-
-    $newHash = password_hash($data['new_password'], PASSWORD_BCRYPT);
-
-    // ← இந்த line இருக்கா check பண்ணு
-    $updated = Auth::updatePassword($tenantId, $user['user_id'], $newHash);
-
-    if (!$updated) {
-        Response::json(null, 500, 'Failed to update password');
-        return;
-    }
-
-    Response::json(null, 200, 'Password changed successfully');
-}
-
-  public static function logout($request, $response)
+    public static function changePassword($request, $response)
     {
-        // 1. Grab the decoded user payload
+        $user = $request->get('user');
+        $tenantId = $request->get('tenant_id');
+
+        if (!$user) {
+            Response::json(null, 401, 'Unauthorized');
+            return;
+        }
+
+        $data = $request->body();
+
+        if (!isset($data['old_password'], $data['new_password'])) {
+            Response::json(null, 400, 'Missing fields');
+            return;
+        }
+
+        $dbUser = Auth::getUserById($tenantId, $user['user_id']);
+
+        if (!$dbUser) {
+            Response::json(null, 404, 'User not found');
+            return;
+        }
+
+        if (!password_verify($data['old_password'], $dbUser['password_hash'])) {
+            Response::json(null, 401, 'Old password incorrect');
+            return;
+        }
+
+        $newHash = password_hash($data['new_password'], PASSWORD_BCRYPT);
+
+        $updated = Auth::updatePassword($tenantId, $user['user_id'], $newHash);
+
+        if (!$updated) {
+            Response::json(null, 500, 'Failed to update password');
+            return;
+        }
+
+        Response::json(null, 200, 'Password changed successfully');
+    }
+
+    public static function logout($request, $response)
+    {
         $user = $request->get('user');
         $tenantId = $user['tenant_id'] ?? $request->get('tenant_id');
 
-        // 2. Revoke the token in the database
         if ($tenantId && isset($_COOKIE['refresh_token'])) {
             $token = Auth::findValidRefreshToken($tenantId, $_COOKIE['refresh_token']);
-            
+
             if ($token) {
                 Auth::deleteRefreshToken($tenantId, $token['id']);
             }
         }
 
-        // 3. Destroy the cookie in the browser
         setcookie("refresh_token", "", time() - 3600, "/");
 
-        // 4. Destroy the PHP Session
         $_SESSION = [];
         session_unset();
         session_destroy();
 
         Response::json(null, 200, 'Logged out successfully');
+    }
+
+    public static function patientLogin($request, $response)
+    {
+        $data = $request->body();
+
+        if (!isset($data['email'], $data['password'])) {
+            Response::json(null, 400, 'Email and password required');
+            return;
+        }
+
+        $tenantId = $request->get('tenant_id');
+
+        if (!$tenantId) {
+            Response::json(null, 400, 'Tenant missing');
+            return;
+        }
+
+        $hashedEmail = Encryption::blindIndex($data['email']);
+
+        $patient = Auth::findPatientByEmail($tenantId, $hashedEmail);
+
+        if (!$patient || !password_verify($data['password'], $patient['password_hash'])) {
+            Response::json(null, 401, 'Invalid credentials');
+            return;
+        }
+
+        if ($patient['status'] !== 'active') {
+            Response::json(null, 401, 'Account not active');
+            return;
+        }
+
+        $accessToken = JWT::generateAccessToken([
+            'user_id'        => $patient['id'],
+            'tenant_id'      => $tenantId,
+            'role'           => 'patient',
+            'is_super_admin' => false,
+        ]);
+
+        $refreshToken = bin2hex(random_bytes(64));
+
+        Auth::createRefreshToken($tenantId, $patient['id'], $refreshToken);
+
+        setcookie('refresh_token', $refreshToken, [
+            'expires'  => time() + $_ENV['REFRESH_EXPIRY'],
+            'path'     => '/',
+            'httponly' => true,
+            'secure'   => false,
+            'samesite' => 'Lax',
+        ]);
+
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
+        Response::json([
+            'access_token' => $accessToken,
+            'csrf_token'   => $_SESSION['csrf_token'],
+        ], 200, 'Patient login successful');
     }
 }
