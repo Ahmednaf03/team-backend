@@ -61,11 +61,11 @@ $router->get('/api/profile', function ($request, $response) {
 });
 
 
-$router->post('/api/change-password', function ($request, $response) {
 
+$router->post('/api/change-password', function ($request, $response) {
     JsonMiddleware::handle($request, $response);
     AuthMiddleware::handle($request, $response);
-    CsrfMiddleware::handle($request, $response);
-
+    CSRFMiddleware::handle($request, $response);  // ← CSRFMiddleware correct name
+    TenantMiddleware::handle($request, $response);
     AuthController::changePassword($request, $response);
 });

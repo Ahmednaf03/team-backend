@@ -1,7 +1,6 @@
 RewriteEngine On
 
-# Change the base to the root of the domain
-RewriteBase /
+RewriteBase /team-backend/public/
 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

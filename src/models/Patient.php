@@ -11,15 +11,54 @@ require_once __DIR__ . '/../helpers/Encryption.php';
  
     //  $db = Database::connect();
 
-    public static function getAll($tenantId) {
+    public static function getAll($tenantId, array $params = []) {
+        $page = $params['page'] ?? 1;
+        $perPage = $params['per_page'] ?? 10;
+        $search = $params['search'] ?? '';
 
-        $stmt = self::db($tenantId)->prepare("
-            SELECT id, name, age, gender, phone, address, diagnosis
+        $where = [
+            "deleted_at IS NULL",
+            "status = :status"
+        ];
+        $bindings = [];
+        $bindings[':status'] = 'active';
+
+        if ($search !== '') {
+            $where[] = "CAST(id AS CHAR) LIKE :search";
+            $bindings[':search'] = '%' . $search . '%';
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        $countStmt = self::db($tenantId)->prepare("
+            SELECT COUNT(*)
             FROM patients
-            WHERE status = 'active'
-            AND deleted_at IS NULL
+            WHERE {$whereSql}
         ");
 
+        foreach ($bindings as $key => $value) {
+            $countStmt->bindValue($key, $value);
+        }
+
+        $countStmt->execute();
+        $totalRecords = (int) $countStmt->fetchColumn();
+        $pagination = PaginationHelper::buildMeta($totalRecords, $page, $perPage);
+        $offset = ($pagination['currentPage'] - 1) * $perPage;
+
+        $stmt = self::db($tenantId)->prepare("
+            SELECT id, name, age, gender, phone, address, diagnosis, status, created_at
+            FROM patients
+            WHERE {$whereSql}
+            ORDER BY id DESC
+            LIMIT :limit OFFSET :offset
+        ");
+
+        foreach ($bindings as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -32,7 +71,10 @@ require_once __DIR__ . '/../helpers/Encryption.php';
             $row['diagnosis'] = Encryption::decrypt($row['diagnosis']);
         }
 
-        return $data;
+        return [
+            'data' => $data,
+            'pagination' => $pagination,
+        ];
     }
 
     public static function create($tenantId, $data) {

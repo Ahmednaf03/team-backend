@@ -95,13 +95,12 @@ class PrescriptionController
     public static function getAll($request, $response)
     {
         $tenantId = $request->get('tenant_id');
+        $params = PaginationHelper::parse($request, [
+            'status' => 'string',
+        ]);
 
-        $prescriptions = Prescription::getAll($tenantId);
+        $prescriptions = Prescription::getAll($tenantId, $params);
 
-        Response::json(
-            $prescriptions,
-            200,
-            'Prescriptions fetched successfully'
-        );
+        Response::paginated($prescriptions['data'], $prescriptions['pagination']);
     }
 }

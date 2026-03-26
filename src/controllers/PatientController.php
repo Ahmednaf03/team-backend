@@ -7,9 +7,10 @@ class PatientController{
     public static function get($request, $response){
         // this will be provided by tenant middleware
         $tenantId = $request->get('tenant_id');
-        $patients = Patient::getAll($tenantId);
+        $params = PaginationHelper::parse($request);
+        $patients = Patient::getAll($tenantId, $params);
 
-        Response::json($patients);
+        Response::paginated($patients['data'], $patients['pagination']);
     }
 
 public static function getById($request, $response, $id) {

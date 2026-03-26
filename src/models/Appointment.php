@@ -8,21 +8,91 @@ class Appointment {
         return DatabaseManager::tenant($tenantId);
     }
 
-    public static function getAll($tenantId) {
-        /* leaving you here as an example if used like this 
-        you will always connect to one database regardless of the tenant
-        */
-        // $db = Database::connect();
+    public static function getAll($tenantId, array $params = []) {
+        $page = $params['page'] ?? 1;
+        $perPage = $params['per_page'] ?? 10;
+        $filters = $params['filters'] ?? [];
+        $search = $params['search'] ?? '';
+
+        $where = [
+            'deleted_at IS NULL'
+        ];
+        $bindings = [];
+
+        $filterMap = [
+            'status' => 'status',
+            'patient_id' => 'patient_id',
+            'doctor_id' => 'doctor_id',
+        ];
+
+        foreach ($filterMap as $filterKey => $column) {
+            if (!isset($filters[$filterKey]) || $filters[$filterKey] === '') {
+                continue;
+            }
+
+            $placeholder = ':filter_' . $filterKey;
+            $where[] = "{$column} = {$placeholder}";
+            $bindings[$placeholder] = $filters[$filterKey];
+        }
+
+        if (!empty($filters['scheduled_from'])) {
+            $where[] = 'scheduled_at >= :scheduled_from';
+            $bindings[':scheduled_from'] = $filters['scheduled_from'];
+        }
+
+        if (!empty($filters['scheduled_to'])) {
+            $where[] = 'scheduled_at <= :scheduled_to';
+            $bindings[':scheduled_to'] = $filters['scheduled_to'];
+        }
+
+        if ($search !== '') {
+            $where[] = "(
+                CAST(id AS CHAR) LIKE :search
+                OR CAST(patient_id AS CHAR) LIKE :search
+                OR CAST(doctor_id AS CHAR) LIKE :search
+                OR status LIKE :search
+                OR CAST(scheduled_at AS CHAR) LIKE :search
+            )";
+            $bindings[':search'] = '%' . $search . '%';
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        $countStmt = self::db($tenantId)->prepare("
+            SELECT COUNT(*)
+            FROM appointments
+            WHERE {$whereSql}
+        ");
+
+        foreach ($bindings as $key => $value) {
+            $countStmt->bindValue($key, $value);
+        }
+
+        $countStmt->execute();
+        $totalRecords = (int) $countStmt->fetchColumn();
+        $pagination = PaginationHelper::buildMeta($totalRecords, $page, $perPage);
+        $offset = ($pagination['currentPage'] - 1) * $perPage;
+
         $stmt = self::db($tenantId)->prepare("
             SELECT id, patient_id, doctor_id, scheduled_at, status, notes
             FROM appointments
-            WHERE deleted_at IS NULL
-            ORDER BY scheduled_at ASC
+            WHERE {$whereSql}
+            ORDER BY scheduled_at ASC, id ASC
+            LIMIT :limit OFFSET :offset
         ");
 
+        foreach ($bindings as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return [
+            'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'pagination' => $pagination,
+        ];
     }
 
     public static function getById($id, $tenantId) {

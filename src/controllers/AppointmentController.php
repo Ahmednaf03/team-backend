@@ -5,14 +5,17 @@ class AppointmentController {
     public static function get($request, $response) {
 
         $tenantId = $request->get('tenant_id');
+        $params = PaginationHelper::parse($request, [
+            'status' => 'string',
+            'patient_id' => 'int',
+            'doctor_id' => 'int',
+            'scheduled_from' => 'string',
+            'scheduled_to' => 'string',
+        ]);
 
-        $appointments = Appointment::getAll($tenantId);
-            if (!$appointments) {
-            Response::json(null, 404, 'Appointment not found');
-            return;
-        }
+        $appointments = Appointment::getAll($tenantId, $params);
 
-        Response::json($appointments, 200, 'Appointments fetched successfully');
+        Response::paginated($appointments['data'], $appointments['pagination']);
     }
 
     public static function getById($request, $response, $id) {

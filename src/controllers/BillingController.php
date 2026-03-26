@@ -84,10 +84,13 @@ class BillingController {
     public static function getAll($request, $response) {
 
         $tenantId = $request->get('tenant_id');
+        $params = PaginationHelper::parse($request, [
+            'status' => 'string',
+        ]);
 
-        $data = Invoice::getAll($tenantId);
+        $data = Invoice::getAll($tenantId, $params);
 
-        Response::json($data, 200, 'Invoices fetched successfully');
+        Response::paginated($data['data'], $data['pagination']);
     }
 
     public static function summary($request, $response) {
