@@ -2,6 +2,16 @@
 // require_once __DIR__ . '/../models/Communication.php';
 class CommunicationController {
 
+    public static function getSummaries($request, $response) {
+
+        $tenantId = $request->get('tenant_id');
+        $appointmentIds = self::parseAppointmentIds($request->query('appointment_ids'));
+
+        $messages = Communication::getSummaries($tenantId, $appointmentIds);
+
+        Response::json($messages, 200, 'Message summaries fetched successfully');
+    }
+
 
     public static function get($request, $response, $appointmentId) {
 
@@ -122,6 +132,31 @@ class CommunicationController {
         }
 
         Response::json($deleted, 200, 'Message deleted successfully');
+    }
+
+    private static function parseAppointmentIds($rawAppointmentIds) {
+
+        if ($rawAppointmentIds === null || $rawAppointmentIds === '') {
+            return [];
+        }
+
+        $values = is_array($rawAppointmentIds)
+            ? $rawAppointmentIds
+            : explode(',', $rawAppointmentIds);
+
+        $appointmentIds = [];
+
+        foreach ($values as $value) {
+            $value = trim((string) $value);
+
+            if ($value === '' || !ctype_digit($value)) {
+                continue;
+            }
+
+            $appointmentIds[] = (int) $value;
+        }
+
+        return array_values(array_unique($appointmentIds));
     }
 
 }
