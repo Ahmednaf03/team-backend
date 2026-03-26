@@ -18,7 +18,7 @@ $router->get('/api/notifications', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'receptionist', 'staff', 'patient']);
+    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'receptionist', 'staff', 'patient', 'nurse', 'patient']);
 
     NotificationController::getAll($request, $response);
 });

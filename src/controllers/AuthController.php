@@ -209,36 +209,46 @@ class AuthController
         ], 200, 'Token refreshed');
     }
 
-    public static function changePassword($request, $response)
-    {
-        $user = $request->get('user');
-        $tenantId = $request->get('tenant_id');
+   public static function changePassword($request, $response) {
+    $user = $request->get('user');
+    $tenantId = $request->get('tenant_id');
 
-        if (!$user) {
-            Response::json(null, 401, 'Unauthorized');
-            return;
-        }
-
-        $data = $request->body();
-
-        if (!isset($data['old_password'], $data['new_password'])) {
-            Response::json(null, 400, 'Missing fields');
-            return;
-        }
-
-        $dbUser = Auth::getUserById($tenantId, $user['user_id']);
-
-        if (!password_verify($data['old_password'], $dbUser['password_hash'])) {
-            Response::json(null, 401, 'Old password incorrect');
-            return;
-        }
-
-        $newHash = password_hash($data['new_password'], PASSWORD_BCRYPT);
-
-        Auth::updatePassword($tenantId, $user['user_id'], $newHash);
-
-        Response::json(null, 200, 'Password changed successfully');
+    if (!$user) {
+        Response::json(null, 401, 'Unauthorized');
+        return;
     }
+
+    $data = $request->body();
+
+    if (!isset($data['old_password'], $data['new_password'])) {
+        Response::json(null, 400, 'Missing fields');
+        return;
+    }
+
+    $dbUser = Auth::getUserById($tenantId, $user['user_id']);
+
+    if (!$dbUser) {
+        Response::json(null, 404, 'User not found');
+        return;
+    }
+
+    if (!password_verify($data['old_password'], $dbUser['password_hash'])) {
+        Response::json(null, 401, 'Old password incorrect');
+        return;
+    }
+
+    $newHash = password_hash($data['new_password'], PASSWORD_BCRYPT);
+
+    // ← இந்த line இருக்கா check பண்ணு
+    $updated = Auth::updatePassword($tenantId, $user['user_id'], $newHash);
+
+    if (!$updated) {
+        Response::json(null, 500, 'Failed to update password');
+        return;
+    }
+
+    Response::json(null, 200, 'Password changed successfully');
+}
 
   public static function logout($request, $response)
     {
