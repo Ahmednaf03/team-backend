@@ -5,15 +5,19 @@ class StaffController {
     public static function get($request, $response) {
 
         $tenantId = $request->get('tenant_id');
+        $params = PaginationHelper::parse($request, [
+            'role' => 'string',
+            'status' => 'string',
+        ]);
 
-        $staff = Staff::getAll($tenantId);
+        $staff = Staff::getAll($tenantId, $params);
         $decryptedStaff = array_map(function ($staff) {
             $staff['name'] = Encryption::decrypt($staff['name']);
             $staff['email'] = Encryption::decrypt($staff['email']);
             return $staff;
-        }, $staff);
+        }, $staff['data']);
 
-        Response::json($decryptedStaff, 200, 'Staff fetched successfully');
+        Response::paginated($decryptedStaff, $staff['pagination']);
     }
 
     public static function getById($request, $response, $id) {

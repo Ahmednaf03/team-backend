@@ -95,17 +95,66 @@ public static function create($tenantId, $prescriptionId, $patientId){
         return $stmt->execute([$invoiceId]);
     }
 
-    public static function getAll($tenantId) {
+    public static function getAll($tenantId, array $params = []) {
 
-        $stmt = self::db($tenantId)->prepare("
-            SELECT id, prescription_id, patient_id, total_amount, status, created_at, paid_at
-            FROM invoices
-            ORDER BY id DESC
+        $page = $params['page'] ?? 1;
+        $perPage = $params['per_page'] ?? 10;
+        $filters = $params['filters'] ?? [];
+        $search = $params['search'] ?? '';
+
+        $where = [];
+        $bindings = [];
+
+        if (!empty($filters['status'])) {
+            $where[] = 'i.status = :status';
+            $bindings[':status'] = $filters['status'];
+        }
+
+        if ($search !== '') {
+            $where[] = "(
+                CAST(i.id AS CHAR) LIKE :search
+                OR CAST(i.prescription_id AS CHAR) LIKE :search
+            )";
+            $bindings[':search'] = '%' . $search . '%';
+        }
+
+        $whereSql = empty($where) ? '' : 'WHERE ' . implode(' AND ', $where);
+
+        $countStmt = self::db($tenantId)->prepare("
+            SELECT COUNT(*)
+            FROM invoices i
+            {$whereSql}
         ");
 
+        foreach ($bindings as $key => $value) {
+            $countStmt->bindValue($key, $value);
+        }
+
+        $countStmt->execute();
+        $totalRecords = (int) $countStmt->fetchColumn();
+        $pagination = PaginationHelper::buildMeta($totalRecords, $page, $perPage);
+        $offset = ($pagination['currentPage'] - 1) * $perPage;
+
+        $stmt = self::db($tenantId)->prepare("
+            SELECT i.id, i.prescription_id, i.patient_id, i.total_amount, i.status, i.created_at, i.paid_at
+            FROM invoices i
+            {$whereSql}
+            ORDER BY i.created_at DESC, i.id DESC
+            LIMIT :limit OFFSET :offset
+        ");
+
+        foreach ($bindings as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return [
+            'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'pagination' => $pagination,
+        ];
     }
 
     public static function getSummaryByTenant($tenantId) {

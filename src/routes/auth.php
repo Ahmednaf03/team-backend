@@ -71,7 +71,6 @@ $router->get('/api/profile', function ($request, $response) {
     ], 200, 'Profile fetched successfully');
 });
 
-
 $router->post('/api/change-password', function ($request, $response) {
     JsonMiddleware::handle($request, $response);
     AuthMiddleware::handle($request, $response);

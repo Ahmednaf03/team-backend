@@ -9,31 +9,88 @@ class Patient
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // GET ALL
+    // GET ALL (supports BOTH simple + pagination)
     // ─────────────────────────────────────────────────────────────────────────
-    public static function getAll($tenantId)
+    public static function getAll($tenantId, array $params = [])
     {
+        $usePagination = !empty($params);
+
+        $page    = $params['page'] ?? 1;
+        $perPage = $params['per_page'] ?? 10;
+        $search  = $params['search'] ?? '';
+
+        $where = [
+            "deleted_at IS NULL",
+            "status = :status"
+        ];
+
+        $bindings = [
+            ':status' => 'active'
+        ];
+
+        if ($search !== '') {
+            $where[] = "CAST(id AS CHAR) LIKE :search";
+            $bindings[':search'] = '%' . $search . '%';
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        // ───────── SIMPLE MODE ─────────
+        if (!$usePagination) {
+            $stmt = self::db($tenantId)->prepare("
+                SELECT id, name, age, gender, phone, address, diagnosis, email, status, created_at
+                FROM patients
+                WHERE {$whereSql}
+                ORDER BY id DESC
+            ");
+
+            foreach ($bindings as $k => $v) {
+                $stmt->bindValue($k, $v);
+            }
+
+            $stmt->execute();
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return self::decryptCollection($data);
+        }
+
+        // ───────── PAGINATION MODE ─────────
+        $countStmt = self::db($tenantId)->prepare("
+            SELECT COUNT(*) FROM patients WHERE {$whereSql}
+        ");
+
+        foreach ($bindings as $k => $v) {
+            $countStmt->bindValue($k, $v);
+        }
+
+        $countStmt->execute();
+        $totalRecords = (int) $countStmt->fetchColumn();
+
+        $pagination = PaginationHelper::buildMeta($totalRecords, $page, $perPage);
+        $offset = ($pagination['currentPage'] - 1) * $perPage;
+
         $stmt = self::db($tenantId)->prepare("
             SELECT id, name, age, gender, phone, address, diagnosis, email, status, created_at
             FROM patients
-            WHERE status = 'active'
-            AND deleted_at IS NULL
+            WHERE {$whereSql}
+            ORDER BY id DESC
+            LIMIT :limit OFFSET :offset
         ");
+
+        foreach ($bindings as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+
+        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($data as &$row) {
-            $row['name']      = Encryption::decrypt($row['name']);
-            $row['age']       = (int) Encryption::decrypt($row['age']);
-            $row['gender']    = Encryption::decrypt($row['gender']);
-            $row['phone']     = Encryption::decrypt($row['phone']);
-            $row['address']   = Encryption::decrypt($row['address']);
-            $row['diagnosis'] = Encryption::decrypt($row['diagnosis']);
-            $row['email']     = $row['email'] ? Encryption::decrypt($row['email']) : null;
-        }
-
-        return $data;
+        return [
+            'data' => self::decryptCollection($data),
+            'pagination' => $pagination
+        ];
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -54,26 +111,16 @@ class Patient
 
         if (!$row) return null;
 
-        $row['name']      = Encryption::decrypt($row['name']);
-        $row['age']       = (int) Encryption::decrypt($row['age']);
-        $row['gender']    = Encryption::decrypt($row['gender']);
-        $row['phone']     = Encryption::decrypt($row['phone']);
-        $row['address']   = Encryption::decrypt($row['address']);
-        $row['diagnosis'] = Encryption::decrypt($row['diagnosis']);
-        $row['email']     = $row['email'] ? Encryption::decrypt($row['email']) : null;
-
-        return $row;
+        return self::decryptRow($row);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // GET FULL PROFILE  (called by the patient after login — their own data only)
-    // Returns: core info + appointments + prescriptions (with items) + invoices
+    // GET PROFILE (patient self view)
     // ─────────────────────────────────────────────────────────────────────────
     public static function getProfile($patientId, $tenantId)
     {
         $db = self::db($tenantId);
 
-        // 1. Core patient record
         $stmt = $db->prepare("
             SELECT id, name, age, gender, phone, address, diagnosis, email, status, created_at
             FROM patients
@@ -86,111 +133,98 @@ class Patient
 
         if (!$patient) return null;
 
-        $patient['name']      = Encryption::decrypt($patient['name']);
-        $patient['age']       = (int) Encryption::decrypt($patient['age']);
-        $patient['gender']    = Encryption::decrypt($patient['gender']);
-        $patient['phone']     = Encryption::decrypt($patient['phone']);
-        $patient['address']   = Encryption::decrypt($patient['address']);
-        $patient['diagnosis'] = Encryption::decrypt($patient['diagnosis']);
-        $patient['email']     = $patient['email'] ? Encryption::decrypt($patient['email']) : null;
+        $patient = self::decryptRow($patient);
 
-        // 2. Appointments — joined with doctor name
-$stmt = $db->prepare("
-    SELECT
-        a.id,
-        a.scheduled_at,
-        a.status,
-        a.notes,
-        a.created_at,
-        u.name AS doctor_name
-    FROM appointments a
-    LEFT JOIN users u ON u.id = a.doctor_id AND u.deleted_at IS NULL
-    WHERE a.patient_id = ?
-    AND a.deleted_at IS NULL
-    ORDER BY a.scheduled_at DESC
-");
-$stmt->execute([$patientId]);
-
-$appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-foreach ($appointments as &$appt) {
-    if (!empty($appt['doctor_name'])) {
-        $appt['doctor_name'] = Encryption::decrypt($appt['doctor_name']);
-    }
-}
-
-$patient['appointments'] = $appointments;
-
-        // 3. Prescriptions — joined with doctor name + their items
-        $stmt = $db->prepare("
-    SELECT
-        p.id,
-        p.appointment_id,
-        p.notes,
-        p.status,
-        p.prescription_date,
-        p.dispensed_at,
-        u.name AS doctor_name
-    FROM prescriptions p
-    LEFT JOIN users u ON u.id = p.doctor_id AND u.deleted_at IS NULL
-    WHERE p.patient_id = ?
-    AND p.deleted_at IS NULL
-    ORDER BY p.prescription_date DESC
-");
-$stmt->execute([$patientId]);
-
-$prescriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-foreach ($prescriptions as &$rx) {
-    // decrypt doctor name
-    if (!empty($rx['doctor_name'])) {
-        $rx['doctor_name'] = Encryption::decrypt($rx['doctor_name']);
-    }
-
-    // existing decrypt
-    $rx['notes'] = $rx['notes'] ? Encryption::decrypt($rx['notes']) : null;
-
-    $itemStmt = $db->prepare("
-        SELECT
-            pi.id,
-            pi.quantity,
-            pi.frequency,
-            pi.duration_days,
-            pi.dosage,
-            pi.instructions,
-            m.name AS medicine_name
-        FROM prescription_items pi
-        JOIN medicines m ON m.id = pi.medicine_id AND m.deleted_at IS NULL
-        WHERE pi.prescription_id = ?
-        AND pi.deleted_at IS NULL
-    ");
-    $itemStmt->execute([$rx['id']]);
-    $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    foreach ($items as &$item) {
-        $item['dosage']       = Encryption::decrypt($item['dosage']);
-        $item['instructions'] = Encryption::decrypt($item['instructions']);
-    }
-
-    $rx['items'] = $items;
-}
-
-$patient['prescriptions'] = $prescriptions;
-
-        // 4. Invoices
+        // ───────── Appointments ─────────
         $stmt = $db->prepare("
             SELECT
-                i.id,
-                i.prescription_id,
-                i.total_amount,
-                i.status,
-                i.created_at,
-                i.paid_at
-            FROM invoices i
-            WHERE i.patient_id = ?
-            ORDER BY i.created_at DESC
+                a.id,
+                a.scheduled_at,
+                a.status,
+                a.notes,
+                a.created_at,
+                u.name AS doctor_name
+            FROM appointments a
+            LEFT JOIN users u ON u.id = a.doctor_id AND u.deleted_at IS NULL
+            WHERE a.patient_id = ?
+            AND a.deleted_at IS NULL
+            ORDER BY a.scheduled_at DESC
         ");
         $stmt->execute([$patientId]);
+
+        $appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($appointments as &$appt) {
+            if (!empty($appt['doctor_name'])) {
+                $appt['doctor_name'] = Encryption::decrypt($appt['doctor_name']);
+            }
+        }
+
+        $patient['appointments'] = $appointments;
+
+        // ───────── Prescriptions ─────────
+        $stmt = $db->prepare("
+            SELECT
+                p.id,
+                p.appointment_id,
+                p.notes,
+                p.status,
+                p.prescription_date,
+                p.dispensed_at,
+                u.name AS doctor_name
+            FROM prescriptions p
+            LEFT JOIN users u ON u.id = p.doctor_id AND u.deleted_at IS NULL
+            WHERE p.patient_id = ?
+            AND p.deleted_at IS NULL
+            ORDER BY p.prescription_date DESC
+        ");
+        $stmt->execute([$patientId]);
+
+        $prescriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($prescriptions as &$rx) {
+            if (!empty($rx['doctor_name'])) {
+                $rx['doctor_name'] = Encryption::decrypt($rx['doctor_name']);
+            }
+
+            $rx['notes'] = $rx['notes'] ? Encryption::decrypt($rx['notes']) : null;
+
+            $itemStmt = $db->prepare("
+                SELECT
+                    pi.id,
+                    pi.quantity,
+                    pi.frequency,
+                    pi.duration_days,
+                    pi.dosage,
+                    pi.instructions,
+                    m.name AS medicine_name
+                FROM prescription_items pi
+                JOIN medicines m ON m.id = pi.medicine_id AND m.deleted_at IS NULL
+                WHERE pi.prescription_id = ?
+                AND pi.deleted_at IS NULL
+            ");
+            $itemStmt->execute([$rx['id']]);
+            $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($items as &$item) {
+                $item['dosage']       = Encryption::decrypt($item['dosage']);
+                $item['instructions'] = Encryption::decrypt($item['instructions']);
+            }
+
+            $rx['items'] = $items;
+        }
+
+        $patient['prescriptions'] = $prescriptions;
+
+        // ───────── Invoices ─────────
+        $stmt = $db->prepare("
+            SELECT id, prescription_id, total_amount, status, created_at, paid_at
+            FROM invoices
+            WHERE patient_id = ?
+            ORDER BY created_at DESC
+        ");
+        $stmt->execute([$patientId]);
+
         $patient['invoices'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return $patient;
@@ -231,7 +265,7 @@ $patient['prescriptions'] = $prescriptions;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // UPDATE  (email + password excluded — dedicated endpoints for those)
+    // UPDATE
     // ─────────────────────────────────────────────────────────────────────────
     public static function update($tenantId, $id, $data)
     {
@@ -241,6 +275,7 @@ $patient['prescriptions'] = $prescriptions;
 
         foreach ($allowed as $column) {
             if (!isset($data[$column])) continue;
+
             $fields[] = "$column = ?";
             $values[] = ($column === 'age')
                 ? Encryption::encrypt((string) $data[$column])
@@ -251,6 +286,7 @@ $patient['prescriptions'] = $prescriptions;
 
         $sql      = "UPDATE patients SET " . implode(', ', $fields) . "
                      WHERE id = ? AND deleted_at IS NULL";
+
         $values[] = $id;
 
         $stmt = self::db($tenantId)->prepare($sql);
@@ -274,5 +310,29 @@ $patient['prescriptions'] = $prescriptions;
     {
         $stmt = self::db($tenantId)->prepare("DELETE FROM patients WHERE id = ?");
         return $stmt->execute([$id]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────────────────────────────────
+    private static function decryptCollection($data)
+    {
+        foreach ($data as &$row) {
+            $row = self::decryptRow($row);
+        }
+        return $data;
+    }
+
+    private static function decryptRow($row)
+    {
+        $row['name']      = Encryption::decrypt($row['name']);
+        $row['age']       = (int) Encryption::decrypt($row['age']);
+        $row['gender']    = Encryption::decrypt($row['gender']);
+        $row['phone']     = Encryption::decrypt($row['phone']);
+        $row['address']   = Encryption::decrypt($row['address']);
+        $row['diagnosis'] = Encryption::decrypt($row['diagnosis']);
+        $row['email']     = $row['email'] ? Encryption::decrypt($row['email']) : null;
+
+        return $row;
     }
 }
