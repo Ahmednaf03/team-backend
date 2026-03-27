@@ -19,7 +19,7 @@ $router->get('/api/billing/summary', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['admin', 'provider']);
+    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist']);
 
     BillingController::summary($request, $response);
 });
@@ -31,7 +31,7 @@ $router->get('/api/billing', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['admin', 'provider']);
+    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist']);
 
     BillingController::getAll($request, $response);
 });
@@ -78,7 +78,7 @@ $router->patch('/api/billing', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['admin']);
+    RoleMiddleware::handle($request, $response, ['admin', 'pharmacist']);
 
     $uri = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));

@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../helpers/Encryption.php';
+
 class Appointment {
 
    private static function db($tenantId)
@@ -15,14 +17,14 @@ class Appointment {
         $search = $params['search'] ?? '';
 
         $where = [
-            'deleted_at IS NULL'
+            'a.deleted_at IS NULL'
         ];
         $bindings = [];
 
         $filterMap = [
-            'status' => 'status',
-            'patient_id' => 'patient_id',
-            'doctor_id' => 'doctor_id',
+            'status' => 'a.status',
+            'patient_id' => 'a.patient_id',
+            'doctor_id' => 'a.doctor_id',
         ];
 
         foreach ($filterMap as $filterKey => $column) {
@@ -36,31 +38,37 @@ class Appointment {
         }
 
         if (!empty($filters['scheduled_from'])) {
-            $where[] = 'scheduled_at >= :scheduled_from';
+            $where[] = 'a.scheduled_at >= :scheduled_from';
             $bindings[':scheduled_from'] = $filters['scheduled_from'];
         }
 
         if (!empty($filters['scheduled_to'])) {
-            $where[] = 'scheduled_at <= :scheduled_to';
+            $where[] = 'a.scheduled_at <= :scheduled_to';
             $bindings[':scheduled_to'] = $filters['scheduled_to'];
         }
 
         if ($search !== '') {
             $where[] = "(
-                CAST(id AS CHAR) LIKE :search
-                OR CAST(patient_id AS CHAR) LIKE :search
-                OR CAST(doctor_id AS CHAR) LIKE :search
-                OR status LIKE :search
-                OR CAST(scheduled_at AS CHAR) LIKE :search
+                CAST(a.id AS CHAR) LIKE :search
+                OR CAST(a.patient_id AS CHAR) LIKE :search
+                OR CAST(a.doctor_id AS CHAR) LIKE :search
+                OR a.status LIKE :search
+                OR CAST(a.scheduled_at AS CHAR) LIKE :search
             )";
             $bindings[':search'] = '%' . $search . '%';
         }
 
         $whereSql = implode(' AND ', $where);
+        $fromSql = "
+            FROM appointments a
+            LEFT JOIN users u
+                ON u.id = a.doctor_id
+               AND u.deleted_at IS NULL
+        ";
 
         $countStmt = self::db($tenantId)->prepare("
             SELECT COUNT(*)
-            FROM appointments
+            {$fromSql}
             WHERE {$whereSql}
         ");
 
@@ -74,10 +82,17 @@ class Appointment {
         $offset = ($pagination['currentPage'] - 1) * $perPage;
 
         $stmt = self::db($tenantId)->prepare("
-            SELECT id, patient_id, doctor_id, scheduled_at, status, notes
-            FROM appointments
+            SELECT
+                a.id,
+                a.patient_id,
+                a.doctor_id,
+                a.scheduled_at,
+                a.status,
+                a.notes,
+                u.name AS doctor_name
+            {$fromSql}
             WHERE {$whereSql}
-            ORDER BY scheduled_at ASC, id ASC
+            ORDER BY a.scheduled_at ASC, a.id ASC
             LIMIT :limit OFFSET :offset
         ");
 
@@ -90,7 +105,7 @@ class Appointment {
         $stmt->execute();
 
         return [
-            'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'data' => self::normalizeCollection($stmt->fetchAll(PDO::FETCH_ASSOC)),
             'pagination' => $pagination,
         ];
     }
@@ -98,15 +113,25 @@ class Appointment {
     public static function getById($id, $tenantId) {
 
         $stmt = self::db($tenantId)->prepare("
-            SELECT id, patient_id, doctor_id, scheduled_at, status, notes
-            FROM appointments
-            WHERE id = ?
-            AND deleted_at IS NULL
+            SELECT
+                a.id,
+                a.patient_id,
+                a.doctor_id,
+                a.scheduled_at,
+                a.status,
+                a.notes,
+                u.name AS doctor_name
+            FROM appointments a
+            LEFT JOIN users u
+                ON u.id = a.doctor_id
+               AND u.deleted_at IS NULL
+            WHERE a.id = ?
+            AND a.deleted_at IS NULL
         ");
 
         $stmt->execute([$id]);
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return self::normalizeRow($stmt->fetch(PDO::FETCH_ASSOC) ?: null);
     }
 
     public static function create($tenantId, $data) {
@@ -146,7 +171,15 @@ class Appointment {
             if (isset($data[$column])) {
 
                 if ($column === 'scheduled_at') {
-                    if (self::hasConflict($tenantId, $data['doctor_id'], $data['scheduled_at'], $id)) {
+                    $appointment = self::getById($id, $tenantId);
+
+                    if (!$appointment) {
+                        return false;
+                    }
+
+                    $doctorId = $data['doctor_id'] ?? $appointment['doctor_id'];
+
+                    if (self::hasConflict($tenantId, $doctorId, $data['scheduled_at'], $id)) {
                         return false;
                     }
                 }
@@ -164,7 +197,6 @@ class Appointment {
                 WHERE id = ? AND deleted_at IS NULL";
 
         $values[] = $id;
-        // $values[] = $tenantId;
 
         $stmt = self::db($tenantId)->prepare($sql);
 
@@ -181,6 +213,7 @@ class Appointment {
 
         return $stmt->execute([$notes, $id]);
     }
+
     public static function cancel($tenantId, $id) {
 
         $stmt = self::db($tenantId)->prepare("
@@ -203,20 +236,42 @@ class Appointment {
         return $stmt->execute([$id]);
     }
 
-    public static function getUpcoming($tenantId) {
+    public static function getUpcoming($tenantId, $patientId = null) {
+
+        $params = [];
+        $where = [
+            'a.scheduled_at >= NOW()',
+            "a.status = 'scheduled'",
+            'a.deleted_at IS NULL'
+        ];
+
+        if ($patientId !== null) {
+            $where[] = 'a.patient_id = ?';
+            $params[] = $patientId;
+        }
+
+        $whereSql = implode(' AND ', $where);
 
         $stmt = self::db($tenantId)->prepare("
-            SELECT id, patient_id, doctor_id, scheduled_at, status, notes
-            FROM appointments
-            WHERE scheduled_at >= NOW()
-            AND status = 'scheduled'
-            AND deleted_at IS NULL
-            ORDER BY scheduled_at ASC
+            SELECT
+                a.id,
+                a.patient_id,
+                a.doctor_id,
+                a.scheduled_at,
+                a.status,
+                a.notes,
+                u.name AS doctor_name
+            FROM appointments a
+            LEFT JOIN users u
+                ON u.id = a.doctor_id
+               AND u.deleted_at IS NULL
+            WHERE {$whereSql}
+            ORDER BY a.scheduled_at ASC
         ");
 
-        $stmt->execute([$tenantId]);
+        $stmt->execute($params);
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return self::normalizeCollection($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     private static function hasConflict($tenantId, $doctorId, $scheduledAt, $excludeId = null) {
@@ -241,5 +296,29 @@ class Appointment {
         $stmt->execute($params);
 
         return $stmt->fetchColumn() > 0;
+    }
+
+    private static function normalizeCollection(array $appointments) {
+
+        foreach ($appointments as &$appointment) {
+            $appointment = self::normalizeRow($appointment);
+        }
+
+        return $appointments;
+    }
+
+    private static function normalizeRow($appointment) {
+
+        if (!$appointment) {
+            return null;
+        }
+
+        if (!empty($appointment['doctor_name'])) {
+            $appointment['doctor_name'] = Encryption::decrypt($appointment['doctor_name']);
+        } else {
+            $appointment['doctor_name'] = null;
+        }
+
+        return $appointment;
     }
 }

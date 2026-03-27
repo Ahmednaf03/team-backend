@@ -25,7 +25,7 @@ class Tenant
 public static function getResolveBySlug($slug)
     {
         $stmt = self::db()->prepare("
-            SELECT name, slug, subdomain, custom_domain 
+            SELECT name, slug, subdomain, custom_domain, theme 
             FROM tenants
             WHERE slug = :slug 
               AND status = 'active' 

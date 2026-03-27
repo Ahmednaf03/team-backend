@@ -7,7 +7,7 @@ $router->get('/api/appointments/upcoming', function ($request, $response) {
 
     AuthMiddleware::handle($request, $response);
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin', 'receptionist']);
+    RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin', 'receptionist', 'patient']);
 
     AppointmentController::upcoming($request, $response);
 });
@@ -16,7 +16,7 @@ $router->get('/api/appointments', function ($request, $response) {
    AuthMiddleware::handle($request, $response);
     CSRFMiddleware::handle($request, $response);
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin', 'receptionist']);
+    RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin', 'receptionist', 'patient']);
 
     $uri = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));
@@ -43,7 +43,7 @@ $router->post('/api/appointments', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin', 'receptionist']);
+    RoleMiddleware::handle($request, $response, ['provider', 'nurse', 'admin', 'receptionist', 'patient']);
 
     AppointmentController::create($request, $response);
 });
@@ -60,7 +60,7 @@ $router->put('/api/appointments', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['provider', 'admin']);
+    RoleMiddleware::handle($request, $response, ['provider', 'admin', 'nurse']);
 
     $uri = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));

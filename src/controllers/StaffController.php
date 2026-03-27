@@ -5,10 +5,16 @@ class StaffController {
     public static function get($request, $response) {
 
         $tenantId = $request->get('tenant_id');
+        $user = $request->get('user');
         $params = PaginationHelper::parse($request, [
             'role' => 'string',
             'status' => 'string',
         ]);
+
+        if (($user['role'] ?? null) === 'patient') {
+            $params['filters']['role'] = 'provider';
+            $params['filters']['status'] = 'active';
+        }
 
         $staff = Staff::getAll($tenantId, $params);
         $decryptedStaff = array_map(function ($staff) {
@@ -17,12 +23,23 @@ class StaffController {
             return $staff;
         }, $staff['data']);
 
+        if (($user['role'] ?? null) === 'patient') {
+            $decryptedStaff = array_map(function ($staff) {
+                return [
+                    'id' => $staff['id'],
+                    'name' => $staff['name'],
+                    'role' => $staff['role'],
+                ];
+            }, $decryptedStaff);
+        }
+
         Response::paginated($decryptedStaff, $staff['pagination']);
     }
 
     public static function getById($request, $response, $id) {
 
         $tenantId = $request->get('tenant_id');
+        $user = $request->get('user');
 
         $staff = Staff::getById($tenantId, $id);
         if (!$staff) {
@@ -30,8 +47,22 @@ class StaffController {
             return;
         }
 
+        if (($user['role'] ?? null) === 'patient' && ($staff['role'] ?? null) !== 'provider') {
+            Response::json(null, 404, 'Staff not found');
+            return;
+        }
+
         $staff['name'] = Encryption::decrypt($staff['name']);
         $staff['email'] = Encryption::decrypt($staff['email']);
+
+        if (($user['role'] ?? null) === 'patient') {
+            Response::json([
+                'id' => $staff['id'],
+                'name' => $staff['name'],
+                'role' => $staff['role'],
+            ], 200, 'Staff fetched successfully');
+            return;
+        }
 
         Response::json($staff, 200, 'Staff fetched successfully');
     }
