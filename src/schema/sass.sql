@@ -251,14 +251,18 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int DEFAULT NULL,
   `user_type` enum('staff','patient') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'staff',
-  `type` enum('appointment','payment','prescription','system') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` enum('appointment','payment','prescription','system','maintenance') COLLATE utf8mb4_unicode_ci NOT NULL,
   `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `starts_at` datetime DEFAULT NULL,
+  `ends_at` datetime DEFAULT NULL,
   `is_read` tinyint(1) DEFAULT 0,
   `reference_id` int DEFAULT NULL,
+  `created_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_notif_user` (`user_id`, `user_type`)
+  KEY `idx_notif_user` (`user_id`, `user_type`),
+  KEY `idx_notif_schedule` (`type`, `starts_at`, `ends_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 COMMIT;

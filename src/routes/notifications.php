@@ -12,13 +12,30 @@
 |--------------------------------------------------------------------------
 */
 
+$router->post('/api/notifications/broadcast', function ($request, $response) {
+
+    AuthMiddleware::handle($request, $response);
+    CSRFMiddleware::handle($request, $response);
+
+    TenantMiddleware::handle($request, $response);
+    RoleMiddleware::handle($request, $response, ['admin']);
+
+    NotificationController::broadcast($request, $response);
+});
+
+/*
+|--------------------------------------------------------------------------
+| GET /api/notifications
+|--------------------------------------------------------------------------
+*/
+
 $router->get('/api/notifications', function ($request, $response) {
 
     AuthMiddleware::handle($request, $response);
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'receptionist', 'staff', 'patient', 'nurse', 'patient']);
+    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'receptionist', 'nurse', 'patient']);
 
     NotificationController::getAll($request, $response);
 });
@@ -35,7 +52,7 @@ $router->patch('/api/notifications/read', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'receptionist', 'staff', 'patient']);
+    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'receptionist', 'nurse', 'patient']);
 
     $uri = parse_url($request->uri(), PHP_URL_PATH);
     $segments = explode('/', trim($uri, '/'));
@@ -80,7 +97,7 @@ $router->delete('/api/notifications', function ($request, $response) {
     CSRFMiddleware::handle($request, $response);
 
     TenantMiddleware::handle($request, $response);
-    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'staff', 'patient']);
+    RoleMiddleware::handle($request, $response, ['admin', 'provider', 'pharmacist', 'receptionist', 'nurse', 'patient']);
 
     NotificationController::clearAll($request, $response);
 });
